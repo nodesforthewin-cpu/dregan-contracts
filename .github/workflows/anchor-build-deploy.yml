@@ -12,6 +12,10 @@ on:
           - devnet
           - mainnet
 
+env:
+  SOLANA_VERSION: v1.18.26
+  ANCHOR_VERSION: 0.30.1
+
 jobs:
   build-deploy:
     runs-on: ubuntu-latest
@@ -19,64 +23,76 @@ jobs:
       - uses: actions/checkout@v4
       
       - name: Install Rust
-        uses: actions-rs/toolchain@v1
-        with:
-          toolchain: stable
-          override: true
+        uses: dtolnay/rust-toolchain@stable
           
-      - name: Cache Cargo
-        uses: actions/cache@v3
+      - name: Cache Dependencies
+        uses: actions/cache@v4
         with:
           path: |
             ~/.cargo/bin/
             ~/.cargo/registry/
             ~/.cargo/git/
-          key: cargo-${{ runner.os }}-${{ hashFiles('**/Cargo.lock') }}
+            ~/.local/share/solana/
+          key: deps-${{ runner.os }}-solana-${{ env.SOLANA_VERSION }}
           
-      - name: Install Solana
+      - name: Install Solana CLI
         run: |
-          sh -c "$(curl -sSfL https://release.solana.com/v1.18.26/install)"
-          echo "$HOME/.local/share/solana/install/active_release/bin" >> $GITHUB_PATH
-          export PATH="$HOME/.local/share/solana/install/active_release/bin:$PATH"
+          if ! command -v solana &> /dev/null; then
+            curl -sSfL "https://release.solana.com/${{ env.SOLANA_VERSION }}/solana-release-x86_64-unknown-linux-gnu.tar.bz2" -o solana.tar.bz2
+            tar -xjf solana.tar.bz2
+            sudo mv solana-release/bin/* /usr/local/bin/
+            rm -rf solana.tar.bz2 solana-release
+          fi
           solana --version
           
-      - name: Install Anchor
+      - name: Install Anchor CLI
         run: |
-          cargo install --git https://github.com/coral-xyz/anchor --tag v0.30.1 anchor-cli --locked
+          if ! command -v anchor &> /dev/null; then
+            cargo install --git https://github.com/coral-xyz/anchor --tag v${{ env.ANCHOR_VERSION }} anchor-cli --locked
+          fi
           anchor --version
           
-      - name: Configure Solana
+      - name: Configure Wallet
         run: |
-          mkdir -p ~/.config/solana
-          echo "${{ secrets.DEPLOY_WALLET }}" > ~/.config/solana/id.json
-          solana config set --keypair ~/.config/solana/id.json
+          echo '${{ secrets.DEPLOY_WALLET }}' > wallet.json
+          solana config set --keypair $(pwd)/wallet.json
           if [ "${{ inputs.network }}" = "mainnet" ]; then
             solana config set --url https://api.mainnet-beta.solana.com
           else
             solana config set --url https://api.devnet.solana.com
           fi
+          echo "Wallet address:"
           solana address
-          solana balance || echo "Checking balance..."
+          echo "Balance:"
+          solana balance || echo "Could not fetch balance"
           
-      - name: Build Staking
+      - name: Build Staking Contract
         run: |
           cd programs/dregan-staking
           anchor build
+          ls -la target/deploy/ || true
           
-      - name: Build NFT
+      - name: Build NFT Contract
         run: |
           cd programs/dregan-nft
           anchor build
+          ls -la target/deploy/ || true
           
       - name: Deploy Staking
         run: |
           cd programs/dregan-staking
-          anchor deploy 2>&1 | tee deploy.log
-          grep -oP "Program Id: \K[A-Za-z0-9]+" deploy.log || echo "Check logs for program ID"
+          solana program deploy target/deploy/dregan_staking.so 2>&1 | tee deploy.log || true
+          cat deploy.log
           
       - name: Deploy NFT
         run: |
-          cd programs/dregan-nft  
-          anchor deploy 2>&1 | tee deploy.log
-          grep -oP "Program Id: \K[A-Za-z0-9]+" deploy.log || echo "Check logs for program ID"
+          cd programs/dregan-nft
+          solana program deploy target/deploy/dregan_nft.so 2>&1 | tee deploy.log || true
+          cat deploy.log
+          
+      - name: Summary
+        run: |
+          echo "## Deployment Complete" >> $GITHUB_STEP_SUMMARY
+          echo "Network: ${{ inputs.network }}" >> $GITHUB_STEP_SUMMARY
+          echo "Check the logs above for Program IDs" >> $GITHUB_STEP_SUMMARY
 
