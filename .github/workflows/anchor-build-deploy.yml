@@ -1,0 +1,79 @@
+name: Build and Deploy DREGAN Contracts
+
+on:
+  workflow_dispatch:
+    inputs:
+      network:
+        description: 'Target network'
+        required: true
+        default: 'devnet'
+        type: choice
+        options:
+          - devnet
+          - mainnet
+      deploy_staking:
+        description: 'Deploy staking contract'
+        default: 'true'
+      deploy_nft:
+        description: 'Deploy NFT contract'
+        default: 'true'
+
+jobs:
+  build-deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Setup Solana
+        uses: solana-developers/actions-kit@v0.1.0
+        with:
+          anchor-version: '0.30.1'
+          solana-version: '1.18.26'
+      
+      - name: Create wallet
+        run: |
+          echo "${{ secrets.DEPLOY_WALLET }}" > wallet.json
+          solana config set --keypair wallet.json
+          
+      - name: Set network
+        run: |
+          if [ "${{ inputs.network }}" = "mainnet" ]; then
+            solana config set --url ${{ secrets.MAINNET_RPC_URL || 'https://api.mainnet-beta.solana.com' }}
+          else
+            solana config set --url ${{ secrets.DEVNET_RPC_URL || 'https://api.devnet.solana.com' }}
+          fi
+          
+      - name: Check balance
+        run: solana balance || echo "Balance check failed"
+        
+      - name: Build Staking Contract
+        if: inputs.deploy_staking == 'true'
+        run: |
+          cd programs/dregan-staking
+          anchor build
+          
+      - name: Build NFT Contract
+        if: inputs.deploy_nft == 'true'
+        run: |
+          cd programs/dregan-nft
+          anchor build
+          
+      - name: Deploy Staking
+        if: inputs.deploy_staking == 'true'
+        run: |
+          cd programs/dregan-staking
+          anchor deploy --program-name dregan_staking 2>&1 | tee deploy-staking.log
+          echo "STAKING_PROGRAM_ID=$(grep 'Program Id:' deploy-staking.log | awk '{print $3}')" >> $GITHUB_ENV
+          
+      - name: Deploy NFT
+        if: inputs.deploy_nft == 'true'
+        run: |
+          cd programs/dregan-nft
+          anchor deploy --program-name dregan_nft 2>&1 | tee deploy-nft.log
+          echo "NFT_PROGRAM_ID=$(grep 'Program Id:' deploy-nft.log | awk '{print $3}')" >> $GITHUB_ENV
+          
+      - name: Output Program IDs
+        run: |
+          echo "## Deployed Program IDs" >> $GITHUB_STEP_SUMMARY
+          echo "- Staking: ${{ env.STAKING_PROGRAM_ID }}" >> $GITHUB_STEP_SUMMARY
+          echo "- NFT: ${{ env.NFT_PROGRAM_ID }}" >> $GITHUB_STEP_SUMMARY
