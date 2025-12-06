@@ -33,15 +33,20 @@ jobs:
         run: cargo install --git https://github.com/coral-xyz/anchor avm --locked --force && avm install latest && avm use latest
           
       - name: Setup Wallet
+        env:
+          WALLET_KEY: ${{ secrets.DEPLOY_WALLET }}
         run: |
           mkdir -p ~/.config/solana
-          echo '${{ secrets.DEPLOY_WALLET }}' > ~/deploy-wallet.json
+          echo "$WALLET_KEY" > ~/deploy-wallet.json
+          echo "Wallet file created, checking format..."
+          head -c 50 ~/deploy-wallet.json
+          echo ""
           solana config set --keypair ~/deploy-wallet.json
           solana config set --url https://api.devnet.solana.com
           echo "Wallet Address:"
           solana address
           echo "Balance:"
-          solana balance || echo "Balance check skipped"
+          solana balance
           
       - name: Build Staking
         run: |
@@ -56,10 +61,10 @@ jobs:
       - name: Deploy Staking
         run: |
           cd programs/dregan-staking
-          solana program deploy target/deploy/dregan_staking.so 2>&1 || echo "Deploy attempted"
+          solana program deploy target/deploy/dregan_staking.so
           
       - name: Deploy NFT  
         run: |
           cd programs/dregan-nft
-          solana program deploy target/deploy/dregan_nft.so 2>&1 || echo "Deploy attempted"
+          solana program deploy target/deploy/dregan_nft.so
 
