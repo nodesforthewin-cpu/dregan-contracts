@@ -12,87 +12,46 @@ on:
           - devnet
           - mainnet
 
-env:
-  SOLANA_VERSION: v1.18.26
-  ANCHOR_VERSION: 0.30.1
-
 jobs:
   build-deploy:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
       
-      - name: Install Rust
+      - name: Setup Rust
         uses: dtolnay/rust-toolchain@stable
+        
+      - name: Cache
+        uses: Swatinem/rust-cache@v2
           
-      - name: Cache Dependencies
-        uses: actions/cache@v4
+      - name: Install Solana
+        uses: metadaoproject/setup-solana@v1.0
         with:
-          path: |
-            ~/.cargo/bin/
-            ~/.cargo/registry/
-            ~/.cargo/git/
-            ~/.local/share/solana/
-          key: deps-${{ runner.os }}-solana-${{ env.SOLANA_VERSION }}
+          solana-cli-version: 1.18.18
           
-      - name: Install Solana CLI
-        run: |
-          if ! command -v solana &> /dev/null; then
-            curl -sSfL "https://release.solana.com/${{ env.SOLANA_VERSION }}/solana-release-x86_64-unknown-linux-gnu.tar.bz2" -o solana.tar.bz2
-            tar -xjf solana.tar.bz2
-            sudo mv solana-release/bin/* /usr/local/bin/
-            rm -rf solana.tar.bz2 solana-release
-          fi
-          solana --version
+      - name: Install Anchor
+        run: cargo install --git https://github.com/coral-xyz/anchor avm --locked --force && avm install latest && avm use latest
           
-      - name: Install Anchor CLI
+      - name: Setup Wallet
         run: |
-          if ! command -v anchor &> /dev/null; then
-            cargo install --git https://github.com/coral-xyz/anchor --tag v${{ env.ANCHOR_VERSION }} anchor-cli --locked
-          fi
-          anchor --version
+          echo "${{ secrets.DEPLOY_WALLET }}" > ~/.config/solana/id.json
+          solana config set --keypair ~/.config/solana/id.json
+          solana config set --url ${{ inputs.network == 'mainnet' && 'https://api.mainnet-beta.solana.com' || 'https://api.devnet.solana.com' }}
+          echo "Address:" && solana address
+          echo "Balance:" && solana balance
           
-      - name: Configure Wallet
+      - name: Build Contracts
         run: |
-          echo '${{ secrets.DEPLOY_WALLET }}' > wallet.json
-          solana config set --keypair $(pwd)/wallet.json
-          if [ "${{ inputs.network }}" = "mainnet" ]; then
-            solana config set --url https://api.mainnet-beta.solana.com
-          else
-            solana config set --url https://api.devnet.solana.com
-          fi
-          echo "Wallet address:"
-          solana address
-          echo "Balance:"
-          solana balance || echo "Could not fetch balance"
-          
-      - name: Build Staking Contract
-        run: |
-          cd programs/dregan-staking
-          anchor build
-          ls -la target/deploy/ || true
-          
-      - name: Build NFT Contract
-        run: |
-          cd programs/dregan-nft
-          anchor build
-          ls -la target/deploy/ || true
+          cd programs/dregan-staking && anchor build
+          cd ../dregan-nft && anchor build
           
       - name: Deploy Staking
         run: |
           cd programs/dregan-staking
-          solana program deploy target/deploy/dregan_staking.so 2>&1 | tee deploy.log || true
-          cat deploy.log
+          solana program deploy target/deploy/dregan_staking.so
           
-      - name: Deploy NFT
+      - name: Deploy NFT  
         run: |
           cd programs/dregan-nft
-          solana program deploy target/deploy/dregan_nft.so 2>&1 | tee deploy.log || true
-          cat deploy.log
-          
-      - name: Summary
-        run: |
-          echo "## Deployment Complete" >> $GITHUB_STEP_SUMMARY
-          echo "Network: ${{ inputs.network }}" >> $GITHUB_STEP_SUMMARY
-          echo "Check the logs above for Program IDs" >> $GITHUB_STEP_SUMMARY
+          solana program deploy target/deploy/dregan_nft.so
 
