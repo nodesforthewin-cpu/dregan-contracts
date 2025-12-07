@@ -45,12 +45,26 @@ jobs:
           echo "Balance:"
           solana balance
 
-      - name: Build Staking Contract
+      - name: Generate Compatible Cargo.lock
         run: |
           echo "=== Cleaning ==="
           rm -rf target Cargo.lock ~/.cargo/registry/cache
           
-          echo ""
+          echo "=== Generating Cargo.lock with pinned versions ==="
+          # First create basic lockfile
+          cargo generate-lockfile
+          
+          # Pin specific problematic crates
+          cargo update -p indexmap --precise 2.2.6 || echo "indexmap pin attempted"
+          cargo update -p base64ct --precise 1.6.0 || echo "base64ct pin attempted"
+          cargo update -p toml_edit --precise 0.20.7 || echo "toml_edit pin attempted"
+          cargo update -p toml_datetime --precise 0.6.5 || echo "toml_datetime pin attempted"
+          
+          echo "=== Lockfile head ==="
+          head -50 Cargo.lock 2>/dev/null || echo "No lock yet"
+
+      - name: Build Staking Contract
+        run: |
           echo "=== Building dregan-staking ==="
           cd programs/dregan-staking
           cargo build-sbf 2>&1
