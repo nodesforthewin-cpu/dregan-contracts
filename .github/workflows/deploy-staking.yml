@@ -47,11 +47,27 @@ jobs:
       - name: Build Staking Contract
         run: |
           echo "=== Cleaning ==="
-          rm -rf target ~/.cache/solana
+          rm -rf target ~/.cache/solana Cargo.lock
           
           echo ""
-          echo "=== Using locked dependencies (no cargo update) ==="
-          echo "If Cargo.lock exists, it will preserve pinned versions"
+          echo "=== Generating fresh lockfile ==="
+          cargo generate-lockfile --offline || cargo generate-lockfile
+          
+          echo ""
+          echo "=== Attempting to pin compatible versions ==="
+          # Try different versions that might exist in the lockfile
+          for ver in 2.12.1 2.11.4 2.11.0 2.10.0 2.9.0; do
+            cargo update indexmap@$ver --precise 2.2.6 2>/dev/null && break
+          done
+          
+          for ver in 1.8.1 1.7.3 1.7.0; do
+            cargo update base64ct@$ver --precise 1.6.0 2>/dev/null && break
+          done
+          
+          echo ""
+          echo "=== Final dependency versions ==="
+          grep -A1 "name = \"indexmap\"" Cargo.lock | head -8 || true
+          grep -A1 "name = \"base64ct\"" Cargo.lock | head -4 || true
           
           echo ""
           echo "=== Building dregan-staking ==="
