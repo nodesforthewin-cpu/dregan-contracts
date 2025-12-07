@@ -32,9 +32,6 @@ jobs:
           rustc --version
           cargo --version
 
-      - name: Install Anchor CLI 0.29.0
-        run: npm install -g @coral-xyz/anchor-cli@0.29.0
-
       - name: Setup Wallet
         run: |
           mkdir -p ~/.config/solana
@@ -47,32 +44,34 @@ jobs:
           echo "Balance:"
           solana balance
 
-      - name: Build Staking Contract
+      - name: Build with cargo build-sbf
         run: |
-          echo "=== Cleaning build artifacts ==="
+          echo "=== Cleaning ==="
           rm -rf target Cargo.lock ~/.cache/solana
           
           echo ""
-          echo "=== Running anchor build ==="
-          anchor build -p dregan_staking 2>&1
+          echo "=== Building with cargo build-sbf ==="
+          cd programs/dregan-staking
+          cargo build-sbf 2>&1
           
           echo ""
-          echo "=== Build completed, checking output ==="
-          ls -la target/deploy/ || echo "target/deploy not found"
+          echo "=== Checking output ==="
+          cd ../..
           find . -name "*.so" -type f 2>/dev/null
+          ls -la target/deploy/ 2>/dev/null || echo "target/deploy not found"
+          ls -la target/sbf-solana-solana/release/ 2>/dev/null || echo "sbf release not found"
 
       - name: Deploy Staking Contract
         run: |
           echo "=== Finding .so file ==="
-          SO_FILE=$(find . -name "dregan_staking.so" -type f 2>/dev/null | head -1)
+          SO_FILE=$(find . -name "*.so" -type f 2>/dev/null | grep -i staking | head -1)
           
           if [ -z "$SO_FILE" ]; then
-            echo "Looking for any .so file..."
             SO_FILE=$(find . -name "*.so" -type f 2>/dev/null | head -1)
           fi
           
           if [ -z "$SO_FILE" ]; then
-            echo "ERROR: No .so file found after build"
+            echo "ERROR: No .so file found"
             exit 1
           fi
           
