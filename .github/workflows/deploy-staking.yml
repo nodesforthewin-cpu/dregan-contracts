@@ -16,14 +16,14 @@ jobs:
         with:
           node-version: '20'
 
-      - name: Install Rust stable
+      - name: Install Rust 1.75
         run: |
-          curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y --default-toolchain stable
+          curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y --default-toolchain 1.75.0
           echo "/home/runner/.cargo/bin" >> $GITHUB_PATH
 
-      - name: Install Solana CLI 2.1.5
+      - name: Install Solana CLI 1.18.26
         run: |
-          curl -sSfL https://release.anza.xyz/v2.1.5/install | sh
+          curl -sSfL https://release.anza.xyz/v1.18.26/install | sh
           echo "/home/runner/.local/share/solana/install/active_release/bin" >> $GITHUB_PATH
 
       - name: Verify Tools
@@ -47,26 +47,26 @@ jobs:
       - name: Build Staking Contract
         run: |
           echo "=== Cleaning ==="
-          rm -rf target Cargo.lock ~/.cache/solana
+          rm -rf target ~/.cache/solana
           
           echo ""
-          echo "=== Generating lockfile ==="
+          echo "=== Generating lockfile with compatible versions ==="
+          rm -f Cargo.lock
           cargo generate-lockfile
           
           echo ""
-          echo "=== Pinning compatible dependency versions for rustc 1.79 ==="
-          # Pin base64ct to a version that does not require edition 2024
-          cargo update base64ct@1.7.3 --precise 1.6.0 || cargo update base64ct --precise 1.6.0 || true
-          cargo update base64ct@1.8.1 --precise 1.6.0 || true
-          
-          # Pin indexmap - try different versions that might exist
-          cargo update indexmap@2.12.1 --precise 2.2.6 || true
-          cargo update indexmap@2.6.0 --precise 2.2.6 || true
-          cargo update indexmap@2.7.0 --precise 2.2.6 || true
+          echo "=== Pinning compatible dependency versions for rustc 1.75 ==="
+          # Pin to versions compatible with Solana CLI 1.18.26 (rustc 1.75.0-dev)
+          cargo update -p indexmap --precise 2.2.6 || true
+          cargo update -p base64ct --precise 1.6.0 || true
+          cargo update -p toml_edit --precise 0.20.7 || true
+          cargo update -p toml_datetime --precise 0.6.5 || true
           
           echo ""
-          echo "=== Lockfile after updates ==="
-          grep -E "base64ct|indexmap" Cargo.lock || true
+          echo "=== Checking locked versions ==="
+          grep -E "^name = \"(indexmap|base64ct|toml_edit|toml_datetime)\"" Cargo.lock || true
+          grep -A1 "name = \"indexmap\"" Cargo.lock | head -4
+          grep -A1 "name = \"base64ct\"" Cargo.lock | head -4
           
           echo ""
           echo "=== Building dregan-staking ==="
