@@ -21,9 +21,9 @@ jobs:
           curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y --default-toolchain 1.79.0
           echo "/home/runner/.cargo/bin" >> $GITHUB_PATH
 
-      - name: Install Solana CLI via Anza
+      - name: Install Solana CLI 2.0 (newer bundled rustc)
         run: |
-          curl -sSfL https://release.anza.xyz/v1.18.18/install | sh
+          curl -sSfL https://release.anza.xyz/v2.0.17/install | sh
           echo "/home/runner/.local/share/solana/install/active_release/bin" >> $GITHUB_PATH
 
       - name: Verify Tools
@@ -31,6 +31,7 @@ jobs:
           solana --version
           rustc --version
           cargo --version
+          cargo build-sbf --version || echo "Checking build-sbf version..."
 
       - name: Setup Wallet
         run: |
@@ -52,13 +53,6 @@ jobs:
           echo ""
           echo "=== Generating fresh Cargo.lock ==="
           cargo generate-lockfile
-          
-          echo ""
-          echo "=== Pinning compatible dependency versions for rustc 1.75 ==="
-          cargo update -p borsh --precise 1.5.1 || true
-          cargo update -p toml_datetime --precise 0.6.5 || true
-          cargo update -p winnow --precise 0.5.40 || true
-          cargo update -p proc-macro2 --precise 1.0.86 || true
           
           echo ""
           echo "=== Cargo.lock version ==="
