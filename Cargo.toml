@@ -1,5 +1,5 @@
 [workspace]
-members = ["programs/dregan-staking", "programs/dregan-nft"]
+members = ["programs/*"]
 resolver = "2"
 
 [profile.release]
