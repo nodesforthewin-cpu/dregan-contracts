@@ -16,10 +16,12 @@ jobs:
         with:
           node-version: '20'
 
-      - name: Install Rust 1.75
+      - name: Install Rust stable (latest)
         run: |
-          curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y --default-toolchain 1.75.0
+          curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y --default-toolchain stable
           echo "/home/runner/.cargo/bin" >> $GITHUB_PATH
+          source "$HOME/.cargo/env"
+          rustc --version
 
       - name: Install Solana CLI 1.18.26
         run: |
