@@ -1,10 +1,10 @@
-name: Build and Deploy DREGAN Contracts
+name: Deploy Staking Contract
 
 on:
   workflow_dispatch:
 
 jobs:
-  build-deploy:
+  deploy-staking:
     runs-on: ubuntu-latest
     timeout-minutes: 60
     steps:
@@ -16,83 +16,47 @@ jobs:
         with:
           node-version: '20'
 
-      - name: Install All Tools and Setup Wallet
+      - name: Install Rust
         run: |
-          # Install Rust
           curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y
           source "$HOME/.cargo/env"
-          
-          # Install Solana CLI
+          rustc --version
+          cargo --version
+
+      - name: Install Solana CLI
+        run: |
           sh -c "$(curl -sSfL https://release.solana.com/v1.18.18/install)"
           export PATH="$HOME/.local/share/solana/install/active_release/bin:$PATH"
-          
-          # Verify Solana installation
-          echo "Solana version:"
           solana --version
-          solana-keygen --version
-          
-          # Install Anchor CLI
+
+      - name: Install Anchor CLI
+        run: |
           npm install -g @coral-xyz/anchor-cli@0.30.1
           anchor --version
-          
-          # Write deployer keypair
-          mkdir -p ~/.config/solana target/deploy
+
+      - name: Setup Wallet
+        run: |
+          export PATH="$HOME/.local/share/solana/install/active_release/bin:$PATH"
+          mkdir -p ~/.config/solana
           echo '${{ secrets.DEPLOY_WALLET }}' > ~/.config/solana/id.json
           chmod 600 ~/.config/solana/id.json
-          
-          # Configure Solana CLI
           solana config set --url https://api.devnet.solana.com
           solana config set --keypair ~/.config/solana/id.json
-          
-          # Show deployer info
-          echo "Deployer public key:"
+          echo "Deployer:"
           solana-keygen pubkey ~/.config/solana/id.json
-          
-          echo "Wallet balance:"
+          echo "Balance:"
           solana balance
-          
-          # Save PATH for subsequent steps
-          echo "$HOME/.local/share/solana/install/active_release/bin" >> $GITHUB_PATH
-          echo "$HOME/.cargo/bin" >> $GITHUB_PATH
-        shell: bash
 
-      - name: Build Programs
+      - name: Build Staking Contract
         run: |
           source "$HOME/.cargo/env"
           export PATH="$HOME/.local/share/solana/install/active_release/bin:$PATH"
-          anchor build
-          echo "Build complete. Generated keypairs:"
+          anchor build -p dregan_staking
           ls -la target/deploy/
-        shell: bash
 
-      - name: Deploy Staking Program
+      - name: Deploy Staking Contract
         run: |
           source "$HOME/.cargo/env"
           export PATH="$HOME/.local/share/solana/install/active_release/bin:$PATH"
-          echo "Deploying Staking Program..."
-          anchor deploy --provider.cluster devnet --program-name dregan_staking
-          STAKING_ID=$(solana-keygen pubkey target/deploy/dregan_staking-keypair.json)
-          echo "STAKING_PROGRAM_ID=$STAKING_ID" >> $GITHUB_ENV
-          echo "Staking Program ID: $STAKING_ID"
-        shell: bash
-
-      - name: Deploy NFT Program
-        run: |
-          source "$HOME/.cargo/env"
-          export PATH="$HOME/.local/share/solana/install/active_release/bin:$PATH"
-          echo "Deploying NFT Program..."
-          anchor deploy --provider.cluster devnet --program-name dregan_nft
-          NFT_ID=$(solana-keygen pubkey target/deploy/dregan_nft-keypair.json)
-          echo "NFT_PROGRAM_ID=$NFT_ID" >> $GITHUB_ENV
-          echo "NFT Program ID: $NFT_ID"
-        shell: bash
-
-      - name: Deployment Summary
-        run: |
-          echo "============================================"
-          echo "DREGAN Smart Contracts Deployed to Devnet!"
-          echo "============================================"
-          echo "Staking Program ID: $STAKING_PROGRAM_ID"
-          echo "NFT Program ID: $NFT_PROGRAM_ID"
-          echo "============================================"
-        shell: bash
+          solana program deploy target/deploy/dregan_staking.so
+          echo "Staking Contract Deployed!"
