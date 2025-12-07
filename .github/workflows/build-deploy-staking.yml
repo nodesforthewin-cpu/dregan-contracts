@@ -16,9 +16,9 @@ jobs:
         with:
           node-version: '20'
 
-      - name: Install Rust
+      - name: Install Rust 1.75 (compatible with Anchor 0.29)
         run: |
-          curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y
+          curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y --default-toolchain 1.75.0
           echo "/home/runner/.cargo/bin" >> $GITHUB_PATH
 
       - name: Install Solana CLI via Anza
@@ -44,10 +44,14 @@ jobs:
           echo "Balance:"
           solana balance
 
-      - name: Build with cargo build-sbf
+      - name: Build Staking Contract
         run: |
           echo "=== Cleaning ==="
           rm -rf target Cargo.lock ~/.cache/solana
+          
+          echo ""
+          echo "=== Generating fresh Cargo.lock ==="
+          cargo generate-lockfile
           
           echo ""
           echo "=== Building with cargo build-sbf ==="
@@ -59,16 +63,11 @@ jobs:
           cd ../..
           find . -name "*.so" -type f 2>/dev/null
           ls -la target/deploy/ 2>/dev/null || echo "target/deploy not found"
-          ls -la target/sbf-solana-solana/release/ 2>/dev/null || echo "sbf release not found"
 
       - name: Deploy Staking Contract
         run: |
           echo "=== Finding .so file ==="
-          SO_FILE=$(find . -name "*.so" -type f 2>/dev/null | grep -i staking | head -1)
-          
-          if [ -z "$SO_FILE" ]; then
-            SO_FILE=$(find . -name "*.so" -type f 2>/dev/null | head -1)
-          fi
+          SO_FILE=$(find . -name "*.so" -type f 2>/dev/null | head -1)
           
           if [ -z "$SO_FILE" ]; then
             echo "ERROR: No .so file found"
