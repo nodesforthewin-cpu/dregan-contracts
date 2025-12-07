@@ -1,15 +1,16 @@
 [toolchain]
-anchor_version = "0.24.2"
+anchor_version = "0.28.0"
+solana_version = "1.17.28"
 
 [features]
 seeds = false
 
 [programs.devnet]
-dregan_staking = "BPzxEKTjP4jguHTxAMchAqSqAkzpbNFH87C4eJpz2zfa"
-dregan_nft = "7vSfwTmJCMKbZxZdBKntNgNrLiQysYrTiGjP7HzHjjUZ"
+dregan_staking = "8nEE9CgLAEMmVmN5R4tdPuVhJLp4sU9i87QiFVXcdwKP"
+dregan_nft = "qTSt5stsafLoERpm4j61meXw5ywNnMwgXSDxsiZDJ4C"
 
 [registry]
-url = "https://anchor.projectserum.com"
+url = "https://api.apr.dev"
 
 [provider]
 cluster = "devnet"
