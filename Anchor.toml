@@ -1,5 +1,5 @@
 [toolchain]
-anchor_version = "0.28.0"
+anchor_version = "0.27.0"
 
 [features]
 seeds = false
