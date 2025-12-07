@@ -6,10 +6,9 @@ use solana_program::{
     program_error::ProgramError,
     pubkey::Pubkey,
 };
-use borsh::{BorshDeserialize, BorshSerialize, to_vec};
+use borsh::{BorshDeserialize, BorshSerialize};
 
-// DREGAN NFT Access Control - Native Solana 2.0 Implementation
-// Tiers: BASIC, PRO, ELITE based on DREGAN token holdings
+// DREGAN NFT Access Control - Native Solana Implementation
 
 solana_program::declare_id!("7vSfwTmJCMKbZxZdBKntNgNrLiQysYrTiGjP7HzHjjUZ");
 
@@ -51,15 +50,6 @@ pub struct AccessAccount {
 
 impl AccessAccount {
     pub const LEN: usize = 1 + 32 + 1 + 8 + 8 + 1;
-    
-    pub fn save(&self, data: &mut [u8]) -> Result<(), ProgramError> {
-        let bytes = to_vec(self).map_err(|_| ProgramError::InvalidAccountData)?;
-        if bytes.len() > data.len() {
-            return Err(ProgramError::AccountDataTooSmall);
-        }
-        data[..bytes.len()].copy_from_slice(&bytes);
-        Ok(())
-    }
 }
 
 #[derive(BorshSerialize, BorshDeserialize, Debug)]
@@ -85,7 +75,7 @@ pub fn process_instruction(
             process_initialize(program_id, accounts, bump)
         }
         AccessInstruction::VerifyAccess { balance, timestamp } => {
-            msg!("DREGAN Access: Verify with balance {}", balance);
+            msg!("DREGAN Access: Verify");
             process_verify_access(program_id, accounts, balance, timestamp)
         }
         AccessInstruction::CheckTier => {
@@ -117,7 +107,7 @@ fn process_initialize(
         bump,
     };
     
-    access_data.save(&mut access_account.data.borrow_mut())?;
+    access_data.serialize(&mut &mut access_account.data.borrow_mut()[..])?;
     msg!("Access account initialized for {}", owner.key);
     Ok(())
 }
@@ -151,7 +141,7 @@ fn process_verify_access(
     access_data.last_verified_balance = balance;
     access_data.verification_timestamp = timestamp;
     
-    access_data.save(&mut access_account.data.borrow_mut())?;
+    access_data.serialize(&mut &mut access_account.data.borrow_mut()[..])?;
     msg!("Access verified, balance {}", balance);
     Ok(())
 }
