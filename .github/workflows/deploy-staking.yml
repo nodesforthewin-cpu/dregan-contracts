@@ -16,14 +16,14 @@ jobs:
         with:
           node-version: '20'
 
-      - name: Install Rust 1.75
+      - name: Install Rust 1.68
         run: |
-          curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y --default-toolchain 1.75.0
+          curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y --default-toolchain 1.68.0
           echo "/home/runner/.cargo/bin" >> $GITHUB_PATH
 
-      - name: Install Solana CLI 1.18.26
+      - name: Install Solana CLI 1.14.18
         run: |
-          curl -sSfL https://release.anza.xyz/v1.18.26/install | sh
+          curl -sSfL https://release.solana.com/v1.14.18/install | sh
           echo "/home/runner/.local/share/solana/install/active_release/bin" >> $GITHUB_PATH
 
       - name: Verify Tools
@@ -50,29 +50,9 @@ jobs:
           rm -rf target ~/.cache/solana Cargo.lock
           
           echo ""
-          echo "=== Generating fresh lockfile ==="
-          cargo generate-lockfile --offline || cargo generate-lockfile
-          
-          echo ""
-          echo "=== Attempting to pin compatible versions ==="
-          # Try different versions that might exist in the lockfile
-          for ver in 2.12.1 2.11.4 2.11.0 2.10.0 2.9.0; do
-            cargo update indexmap@$ver --precise 2.2.6 2>/dev/null && break
-          done
-          
-          for ver in 1.8.1 1.7.3 1.7.0; do
-            cargo update base64ct@$ver --precise 1.6.0 2>/dev/null && break
-          done
-          
-          echo ""
-          echo "=== Final dependency versions ==="
-          grep -A1 "name = \"indexmap\"" Cargo.lock | head -8 || true
-          grep -A1 "name = \"base64ct\"" Cargo.lock | head -4 || true
-          
-          echo ""
           echo "=== Building dregan-staking ==="
           cd programs/dregan-staking
-          cargo build-sbf 2>&1
+          cargo build-bpf 2>&1
           
           echo ""
           echo "=== Verifying .so file ==="
