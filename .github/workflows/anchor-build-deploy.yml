@@ -14,32 +14,28 @@ on:
 
 jobs:
   build-deploy:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-22.04
     steps:
       - uses: actions/checkout@v4
       
       - name: Setup Rust
         uses: dtolnay/rust-toolchain@stable
         
-      - name: Cache
+      - name: Cache Cargo
         uses: Swatinem/rust-cache@v2
           
-      - name: Install Solana CLI
-        uses: solana-developers/solana-action@v0.2.0
-        with:
-          solana_version: 1.18.18
+      - name: Download Solana
+        run: |
+          curl -sSfL https://release.solana.com/v1.18.18/solana-release-x86_64-unknown-linux-gnu.tar.bz2 -o solana.tar.bz2
+          tar -xjf solana.tar.bz2
+          echo "$PWD/solana-release/bin" >> $GITHUB_PATH
           
-      - name: Install Anchor CLI
+      - name: Install Anchor
         run: |
           cargo install --git https://github.com/coral-xyz/anchor avm --locked --force
           avm install 0.30.1
           avm use 0.30.1
           echo "$HOME/.avm/bin" >> $GITHUB_PATH
-          
-      - name: Verify Installation
-        run: |
-          solana --version
-          anchor --version || echo "Anchor version check"
           
       - name: Setup Wallet
         env:
@@ -47,11 +43,10 @@ jobs:
         run: |
           mkdir -p ~/.config/solana
           echo "$WALLET_KEY" > ~/.config/solana/id.json
+          solana --version
           solana config set --keypair ~/.config/solana/id.json
           solana config set --url https://api.devnet.solana.com
-          echo "Wallet Address:"
           solana address
-          echo "Balance:"
           solana balance
           
       - name: Build Staking
@@ -73,4 +68,3 @@ jobs:
         run: |
           cd programs/dregan-nft
           solana program deploy target/deploy/dregan_nft.so
-
