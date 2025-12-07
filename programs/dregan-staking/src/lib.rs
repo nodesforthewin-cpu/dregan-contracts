@@ -3,16 +3,14 @@ use solana_program::{
     entrypoint,
     entrypoint::ProgramResult,
     msg,
-    program::invoke_signed,
     program_error::ProgramError,
     pubkey::Pubkey,
     clock::Clock,
     sysvar::Sysvar,
-    program_pack::Pack,
 };
-use borsh::{BorshDeserialize, BorshSerialize};
+use borsh::{BorshDeserialize, BorshSerialize, to_vec};
 
-// DREGAN Staking Pool - Native Solana Implementation
+// DREGAN Staking Pool - Native Solana 2.0 Implementation
 // Tiers: 30-day (10% APY), 60-day (15% APY), 90-day (20% APY)
 
 solana_program::declare_id!("BPzxEKTjP4jguHTxAMchAqSqAkzpbNFH87C4eJpz2zfa");
@@ -27,17 +25,17 @@ pub enum StakeTier {
 impl StakeTier {
     pub fn lock_duration(&self) -> i64 {
         match self {
-            StakeTier::Basic => 30 * 24 * 60 * 60,  // 30 days
-            StakeTier::Pro => 60 * 24 * 60 * 60,    // 60 days
-            StakeTier::Elite => 90 * 24 * 60 * 60,  // 90 days
+            StakeTier::Basic => 30 * 24 * 60 * 60,
+            StakeTier::Pro => 60 * 24 * 60 * 60,
+            StakeTier::Elite => 90 * 24 * 60 * 60,
         }
     }
     
     pub fn apy_basis_points(&self) -> u64 {
         match self {
-            StakeTier::Basic => 1000,  // 10%
-            StakeTier::Pro => 1500,    // 15%
-            StakeTier::Elite => 2000,  // 20%
+            StakeTier::Basic => 1000,
+            StakeTier::Pro => 1500,
+            StakeTier::Elite => 2000,
         }
     }
 }
@@ -62,6 +60,15 @@ impl StakeAccount {
         let seconds_per_year: u64 = 365 * 24 * 60 * 60;
         let apy = self.tier.apy_basis_points();
         (self.amount * apy * staking_duration) / (seconds_per_year * 10000)
+    }
+    
+    pub fn save(&self, data: &mut [u8]) -> Result<(), ProgramError> {
+        let bytes = to_vec(self).map_err(|_| ProgramError::InvalidAccountData)?;
+        if bytes.len() > data.len() {
+            return Err(ProgramError::AccountDataTooSmall);
+        }
+        data[..bytes.len()].copy_from_slice(&bytes);
+        Ok(())
     }
 }
 
@@ -89,7 +96,7 @@ pub fn process_instruction(
             process_initialize(program_id, accounts, bump)
         }
         StakeInstruction::Stake { amount, tier } => {
-            msg!("DREGAN Staking: Stake {} tokens, tier {:?}", amount, tier);
+            msg!("DREGAN Staking: Stake {} tokens", amount);
             process_stake(program_id, accounts, amount, tier)
         }
         StakeInstruction::Unstake => {
@@ -116,28 +123,18 @@ fn process_initialize(
         return Err(ProgramError::MissingRequiredSignature);
     }
     
-    let mut stake_data = StakeAccount::try_from_slice(&stake_account.data.borrow())
-        .unwrap_or(StakeAccount {
-            is_initialized: false,
-            owner: Pubkey::default(),
-            amount: 0,
-            tier: StakeTier::Basic,
-            stake_timestamp: 0,
-            unlock_timestamp: 0,
-            claimed_rewards: 0,
-            bump: 0,
-        });
+    let stake_data = StakeAccount {
+        is_initialized: true,
+        owner: *owner.key,
+        amount: 0,
+        tier: StakeTier::Basic,
+        stake_timestamp: 0,
+        unlock_timestamp: 0,
+        claimed_rewards: 0,
+        bump,
+    };
     
-    if stake_data.is_initialized {
-        return Err(ProgramError::AccountAlreadyInitialized);
-    }
-    
-    stake_data.is_initialized = true;
-    stake_data.owner = *owner.key;
-    stake_data.bump = bump;
-    
-    stake_data.serialize(&mut &mut stake_account.data.borrow_mut()[..])?;
-    
+    stake_data.save(&mut stake_account.data.borrow_mut())?;
     msg!("Stake account initialized for {}", owner.key);
     Ok(())
 }
@@ -151,8 +148,6 @@ fn process_stake(
     let accounts_iter = &mut accounts.iter();
     let stake_account = next_account_info(accounts_iter)?;
     let owner = next_account_info(accounts_iter)?;
-    let _token_account = next_account_info(accounts_iter)?;
-    let _vault = next_account_info(accounts_iter)?;
     
     if !owner.is_signer {
         return Err(ProgramError::MissingRequiredSignature);
@@ -169,16 +164,13 @@ fn process_stake(
     }
     
     let clock = Clock::get()?;
-    let current_time = clock.unix_timestamp;
-    
     stake_data.amount = stake_data.amount.checked_add(amount)
         .ok_or(ProgramError::ArithmeticOverflow)?;
     stake_data.tier = tier.clone();
-    stake_data.stake_timestamp = current_time;
-    stake_data.unlock_timestamp = current_time + tier.lock_duration();
+    stake_data.stake_timestamp = clock.unix_timestamp;
+    stake_data.unlock_timestamp = clock.unix_timestamp + tier.lock_duration();
     
-    stake_data.serialize(&mut &mut stake_account.data.borrow_mut()[..])?;
-    
+    stake_data.save(&mut stake_account.data.borrow_mut())?;
     msg!("Staked {} tokens, unlock at {}", amount, stake_data.unlock_timestamp);
     Ok(())
 }
@@ -208,13 +200,12 @@ fn process_unstake(
     let clock = Clock::get()?;
     if clock.unix_timestamp < stake_data.unlock_timestamp {
         msg!("Cannot unstake: lock period not ended");
-        return Err(ProgramError::Custom(1)); // StillLocked
+        return Err(ProgramError::Custom(1));
     }
     
     let amount = stake_data.amount;
     stake_data.amount = 0;
-    stake_data.serialize(&mut &mut stake_account.data.borrow_mut()[..])?;
-    
+    stake_data.save(&mut stake_account.data.borrow_mut())?;
     msg!("Unstaked {} tokens", amount);
     Ok(())
 }
@@ -247,12 +238,11 @@ fn process_claim_rewards(
     
     if claimable == 0 {
         msg!("No rewards to claim");
-        return Err(ProgramError::Custom(2)); // NoRewards
+        return Err(ProgramError::Custom(2));
     }
     
     stake_data.claimed_rewards = total_rewards;
-    stake_data.serialize(&mut &mut stake_account.data.borrow_mut()[..])?;
-    
+    stake_data.save(&mut stake_account.data.borrow_mut())?;
     msg!("Claimed {} rewards", claimable);
     Ok(())
 }
