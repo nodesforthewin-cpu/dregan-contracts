@@ -1,0 +1,75 @@
+name: Deploy Staking Contract
+
+on:
+  workflow_dispatch:
+
+jobs:
+  deploy-staking:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Install Rust 1.75
+        run: |
+          curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y --default-toolchain 1.75.0
+          echo "/home/runner/.cargo/bin" >> $GITHUB_PATH
+
+      - name: Install Solana CLI 1.18.26
+        run: |
+          curl -sSfL https://release.anza.xyz/v1.18.26/install | sh
+          echo "/home/runner/.local/share/solana/install/active_release/bin" >> $GITHUB_PATH
+
+      - name: Verify Tools
+        run: |
+          solana --version
+          rustc --version
+          cargo --version
+
+      - name: Setup Wallet
+        run: |
+          mkdir -p ~/.config/solana
+          echo '${{ secrets.DEPLOY_WALLET }}' > ~/.config/solana/id.json
+          chmod 600 ~/.config/solana/id.json
+          solana config set --url https://api.devnet.solana.com
+          solana config set --keypair ~/.config/solana/id.json
+          echo "Deployer:"
+          solana-keygen pubkey ~/.config/solana/id.json
+          echo "Balance:"
+          solana balance
+
+      - name: Build Staking Contract
+        run: |
+          echo "=== Cleaning ==="
+          rm -rf target Cargo.lock ~/.cache/solana
+          
+          echo ""
+          echo "=== Generating lockfile ==="
+          cargo generate-lockfile
+          
+          echo ""
+          echo "=== Building dregan-staking ==="
+          cd programs/dregan-staking
+          cargo build-sbf 2>&1
+          
+          echo ""
+          echo "=== Verifying .so file ==="
+          cd ../..
+          find . -name "*.so" -type f 2>/dev/null
+          ls -lh target/deploy/dregan_staking.so
+
+      - name: Deploy Staking Contract
+        run: |
+          echo "=== Deploying to Devnet ==="
+          solana program deploy target/deploy/dregan_staking.so --url https://api.devnet.solana.com
+          
+          echo ""
+          echo "=========================================="
+          echo "STAKING CONTRACT DEPLOYED SUCCESSFULLY!"
+          echo "=========================================="
