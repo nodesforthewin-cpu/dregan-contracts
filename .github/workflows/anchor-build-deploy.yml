@@ -18,16 +18,33 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       
-      - uses: metadaoproject/setup-anchor@v3.3
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
         with:
-          anchor-version: '0.30.1'
-          solana-cli-version: '1.18.18'
           node-version: '20'
+      
+      - name: Setup Rust
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          toolchain: 1.75.0
+        
+      - name: Install Solana CLI
+        run: |
+          sh -c "$(curl -sSfL https://release.solana.com/v1.18.18/install)"
+          echo "/home/runner/.local/share/solana/install/active_release/bin" >> $GITHUB_PATH
+          
+      - name: Install Anchor CLI
+        run: |
+          cargo install --git https://github.com/coral-xyz/anchor avm --locked --force
+          avm install 0.30.1
+          avm use 0.30.1
+          echo "/home/runner/.avm/bin" >> $GITHUB_PATH
       
       - name: Verify Installation
         run: |
           solana --version
           anchor --version
+          rustc --version
           
       - name: Setup Wallet
         env:
@@ -42,10 +59,9 @@ jobs:
           echo "=== Balance ==="
           solana balance
           
-      - name: Clean and Build
+      - name: Build Programs
         run: |
-          rm -f Cargo.lock
-          rm -f programs/*/Cargo.lock
+          rm -rf Cargo.lock target
           anchor build
           ls -la target/deploy/
           
