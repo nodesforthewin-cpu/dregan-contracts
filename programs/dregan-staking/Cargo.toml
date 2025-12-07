@@ -1,13 +1,12 @@
 [package]
 name = "dregan-staking"
 version = "0.1.0"
-description = "DREGAN Staking Pool - Lock tokens for 30/60/90 days with 10/15/20% APY"
+description = "DREGAN Staking Program for Solana"
 edition = "2021"
 
 [lib]
 crate-type = ["cdylib", "lib"]
 name = "dregan_staking"
-path = "src/lib.rs"
 
 [features]
 no-entrypoint = []
@@ -17,11 +16,8 @@ cpi = ["no-entrypoint"]
 default = []
 
 [dependencies]
-anchor-lang = { version = "0.28.0", features = ["init-if-needed"] }
-anchor-spl = { version = "0.28.0", features = ["token", "associated_token"] }
+anchor-lang = "0.27.0"
+anchor-spl = "0.27.0"
 
-[profile.release]
-opt-level = 3
-lto = true
-codegen-units = 1
-overflow-checks = true
+[dev-dependencies]
+anchor-client = "0.27.0"
