@@ -18,10 +18,15 @@ jobs:
           solana-cli-version: '1.18.18'
           node-version: '20'
 
+      - name: Add Solana to PATH
+        run: echo "$HOME/.local/share/solana/install/active_release/bin" >> $GITHUB_PATH
+        shell: bash
+
       - name: Setup Deployer Wallet
         run: |
           mkdir -p ~/.config/solana
           echo '${{ secrets.DEPLOY_WALLET }}' > ~/.config/solana/id.json
+          chmod 600 ~/.config/solana/id.json
           solana-keygen pubkey ~/.config/solana/id.json
           solana config set --url https://api.devnet.solana.com
           solana config set --keypair ~/.config/solana/id.json
