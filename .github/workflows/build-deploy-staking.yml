@@ -5,40 +5,35 @@ on:
 
 jobs:
   build-deploy:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-20.04
     timeout-minutes: 60
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
+      - name: Setup Anchor and Solana
+        uses: metadaoproject/setup-anchor@v3.1
         with:
+          anchor-version: '0.30.1'
+          solana-cli-version: '1.18.18'
           node-version: '20'
 
-      - name: Install Rust
+      - name: Verify Installation
         run: |
-          curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y
-          echo "$HOME/.cargo/bin" >> $GITHUB_PATH
-
-      - name: Install Solana CLI
-        run: |
-          sh -c "$(curl -sSfL https://release.solana.com/v1.18.22/install)"
-          echo "$HOME/.local/share/solana/install/active_release/bin" >> $GITHUB_PATH
-
-      - name: Install Anchor CLI via npm
-        run: |
-          npm install -g @coral-xyz/anchor-cli@0.30.1
+          solana --version
+          anchor --version
+          solana-keygen --version
 
       - name: Setup Deployer Wallet
         run: |
           mkdir -p ~/.config/solana
           
-          # Write keypair - the secret should be in JSON array format [1,2,3,...]
+          # Write keypair - JSON array format [1,2,3,...]
           echo '${{ secrets.DEPLOY_WALLET }}' > ~/.config/solana/id.json
           
           # Verify keypair works
-          solana-keygen pubkey ~/.config/solana/id.json
+          DEPLOYER_PUBKEY=$(solana-keygen pubkey ~/.config/solana/id.json)
+          echo "Deployer public key: $DEPLOYER_PUBKEY"
           
           # Configure Solana CLI
           solana config set --url https://api.devnet.solana.com
@@ -48,14 +43,10 @@ jobs:
           solana balance
 
       - name: Build Staking Program
-        run: |
-          source $HOME/.cargo/env
-          anchor build -p dregan_staking
+        run: anchor build -p dregan_staking
 
       - name: Build NFT Program
-        run: |
-          source $HOME/.cargo/env
-          anchor build -p dregan_nft
+        run: anchor build -p dregan_nft
 
       - name: Deploy Staking Program
         run: |
