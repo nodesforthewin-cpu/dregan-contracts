@@ -52,24 +52,18 @@ jobs:
           rm -rf target Cargo.lock
           anchor build -p dregan_staking
 
-      - name: Check Build Output
-        run: |
-          echo "=== Build artifacts ==="
-          ls -la target/deploy/
-          echo ""
-          echo "=== Program size ==="
-          ls -lh target/deploy/dregan_staking.so
-          echo ""
-          echo "=== Keypair check ==="
-          ls -la target/deploy/*.json || echo "No keypair found"
-
       - name: Deploy Staking Contract
         run: |
-          echo "Deploying DREGAN Staking to Solana Devnet..."
+          echo "=== Deploying DREGAN Staking to Solana Devnet ==="
           echo ""
           
-          # Use anchor deploy which handles everything
-          anchor deploy --provider.cluster devnet --program-name dregan_staking
+          # Show what we're deploying
+          ls -la target/deploy/ || true
+          
+          # Deploy using solana CLI with verbose output
+          solana program deploy target/deploy/dregan_staking.so \
+            --url https://api.devnet.solana.com \
+            -v
           
           echo ""
           echo "=========================================="
