@@ -3,78 +3,40 @@ name: Build and Deploy DREGAN Contracts
 on:
   workflow_dispatch:
     inputs:
-      network:
-        description: Target network
+      priority_fee:
+        description: "Priority fee for transactions"
         required: true
-        default: devnet
-        type: choice
-        options:
-          - devnet
-          - mainnet
-
-env:
-  SOLANA_PATH: /home/runner/.local/share/solana/install/active_release/bin
+        default: "300000"
+        type: string
 
 jobs:
-  build-deploy:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: '20'
-      
-      - name: Setup Rust
-        uses: dtolnay/rust-toolchain@stable
-        with:
-          toolchain: 1.75.0
-        
-      - name: Install Solana CLI
-        run: |
-          sh -c "$(curl -sSfL https://release.solana.com/v1.18.18/install)"
-          echo "/home/runner/.local/share/solana/install/active_release/bin" >> $GITHUB_PATH
-          
-      - name: Install Anchor CLI via npm
-        run: npm install -g @coral-xyz/anchor-cli@0.30.1
-      
-      - name: Verify Installation
-        run: |
-          export PATH="/home/runner/.local/share/solana/install/active_release/bin:$PATH"
-          solana --version
-          anchor --version
-          rustc --version
-          
-      - name: Setup Wallet
-        env:
-          WALLET_KEY: ${{ secrets.DEPLOY_WALLET }}
-        run: |
-          export PATH="/home/runner/.local/share/solana/install/active_release/bin:$PATH"
-          mkdir -p ~/.config/solana
-          echo "$WALLET_KEY" > ~/.config/solana/id.json
-          solana config set --keypair ~/.config/solana/id.json
-          solana config set --url https://api.devnet.solana.com
-          echo "=== Wallet Address ==="
-          solana address
-          echo "=== Balance ==="
-          solana balance
-          
-      - name: Build Programs
-        run: |
-          export PATH="/home/runner/.local/share/solana/install/active_release/bin:$PATH"
-          rm -rf Cargo.lock target
-          anchor build
-          ls -la target/deploy/
-          
-      - name: Deploy Staking Program
-        run: |
-          export PATH="/home/runner/.local/share/solana/install/active_release/bin:$PATH"
-          echo "Deploying Staking Program..."
-          solana program deploy target/deploy/dregan_staking.so
-          
-      - name: Deploy NFT Program
-        run: |
-          export PATH="/home/runner/.local/share/solana/install/active_release/bin:$PATH"
-          echo "Deploying NFT Program..."
-          solana program deploy target/deploy/dregan_nft.so
+  build-staking:
+    uses: solana-developers/github-workflows/.github/workflows/reusable-build.yaml@v0.2.9
+    with:
+      program: "dregan_staking"
+      program-id: "Fg6PaFpoGXkYsidMpWTK6W2BeZ7FEfcYkg476zPFsLnS"
+      network: "devnet"
+      deploy: true
+      upload_idl: false
+      verify: false
+      use-squads: false
+      priority-fee: ${{ github.event.inputs.priority_fee }}
+    secrets:
+      DEVNET_SOLANA_DEPLOY_URL: https://api.devnet.solana.com
+      DEVNET_DEPLOYER_KEYPAIR: ${{ secrets.DEPLOY_WALLET }}
+
+  build-nft:
+    uses: solana-developers/github-workflows/.github/workflows/reusable-build.yaml@v0.2.9
+    needs: build-staking
+    with:
+      program: "dregan_nft"
+      program-id: "Fg6PaFpoGXkYsidMpWTK6W2BeZ7FEfcYkg476zPFsLnS"
+      network: "devnet"
+      deploy: true
+      upload_idl: false
+      verify: false
+      use-squads: false
+      priority-fee: ${{ github.event.inputs.priority_fee }}
+    secrets:
+      DEVNET_SOLANA_DEPLOY_URL: https://api.devnet.solana.com
+      DEVNET_DEPLOYER_KEYPAIR: ${{ secrets.DEPLOY_WALLET }}
