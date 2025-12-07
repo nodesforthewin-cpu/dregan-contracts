@@ -12,6 +12,9 @@ on:
           - devnet
           - mainnet
 
+env:
+  SOLANA_PATH: /home/runner/.local/share/solana/install/active_release/bin
+
 jobs:
   build-deploy:
     runs-on: ubuntu-latest
@@ -38,6 +41,7 @@ jobs:
       
       - name: Verify Installation
         run: |
+          export PATH="/home/runner/.local/share/solana/install/active_release/bin:$PATH"
           solana --version
           anchor --version
           rustc --version
@@ -46,6 +50,7 @@ jobs:
         env:
           WALLET_KEY: ${{ secrets.DEPLOY_WALLET }}
         run: |
+          export PATH="/home/runner/.local/share/solana/install/active_release/bin:$PATH"
           mkdir -p ~/.config/solana
           echo "$WALLET_KEY" > ~/.config/solana/id.json
           solana config set --keypair ~/.config/solana/id.json
@@ -57,16 +62,19 @@ jobs:
           
       - name: Build Programs
         run: |
+          export PATH="/home/runner/.local/share/solana/install/active_release/bin:$PATH"
           rm -rf Cargo.lock target
           anchor build
           ls -la target/deploy/
           
       - name: Deploy Staking Program
         run: |
+          export PATH="/home/runner/.local/share/solana/install/active_release/bin:$PATH"
           echo "Deploying Staking Program..."
           solana program deploy target/deploy/dregan_staking.so
           
       - name: Deploy NFT Program
         run: |
+          export PATH="/home/runner/.local/share/solana/install/active_release/bin:$PATH"
           echo "Deploying NFT Program..."
           solana program deploy target/deploy/dregan_nft.so
