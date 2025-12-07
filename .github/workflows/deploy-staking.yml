@@ -22,9 +22,9 @@ jobs:
           echo "/home/runner/.cargo/bin" >> $GITHUB_PATH
           source "$HOME/.cargo/env"
 
-      - name: Install Solana CLI 1.18.26
+      - name: Install Solana CLI 2.0.18
         run: |
-          sh -c "$(curl -sSfL https://release.anza.xyz/v1.18.26/install)"
+          sh -c "$(curl -sSfL https://release.anza.xyz/v2.0.18/install)"
           echo "/home/runner/.local/share/solana/install/active_release/bin" >> $GITHUB_PATH
 
       - name: Verify Tools
@@ -45,33 +45,12 @@ jobs:
           echo "Balance:"
           solana balance
 
-      - name: Generate and Pin Compatible Cargo.lock
-        run: |
-          echo "=== Generating Cargo.lock with compatible versions ==="
-          rm -rf Cargo.lock target
-          
-          # First resolve all dependencies  
-          cargo metadata --format-version 1 > /dev/null 2>&1 || true
-          
-          # Now pin problematic crates to compatible versions
-          echo "Pinning indexmap to 2.7.0..."
-          cargo update indexmap --precise 2.7.0 || true
-          
-          echo "Pinning toml_datetime to 0.6.8..."
-          cargo update toml_datetime --precise 0.6.8 || true
-          
-          echo "Pinning toml_edit to 0.22.22..."
-          cargo update toml_edit --precise 0.22.22 || true
-          
-          echo "Pinning base64ct to 1.6.0..."
-          cargo update base64ct --precise 1.6.0 || true
-          
-          echo ""
-          echo "=== Cargo.lock generated ==="
-          head -100 Cargo.lock 2>/dev/null || echo "No lock yet"
-
       - name: Build Staking Contract
         run: |
+          echo "=== Cleaning ==="
+          rm -rf target Cargo.lock
+          
+          echo ""
           echo "=== Building dregan-staking ==="
           cd programs/dregan-staking
           cargo build-sbf 2>&1
