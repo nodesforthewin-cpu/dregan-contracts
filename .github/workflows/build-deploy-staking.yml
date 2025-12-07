@@ -31,8 +31,6 @@ jobs:
           solana --version
           rustc --version
           cargo --version
-          echo "Checking cargo build-sbf bundled rustc:"
-          cargo build-sbf --version 2>&1 || true
 
       - name: Setup Wallet
         run: |
@@ -56,8 +54,8 @@ jobs:
           cargo generate-lockfile
           
           echo ""
-          echo "=== Cargo.lock version ==="
-          head -5 Cargo.lock
+          echo "=== Downgrading indexmap to rustc 1.79 compatible version ==="
+          cargo update -p indexmap --precise 2.0.2 || true
           
           echo ""
           echo "=== Building with cargo build-sbf ==="
