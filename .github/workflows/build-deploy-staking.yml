@@ -39,42 +39,51 @@ jobs:
           chmod 600 ~/.config/solana/id.json
           solana config set --url https://api.devnet.solana.com
           solana config set --keypair ~/.config/solana/id.json
+          echo "Deployer:"
           solana-keygen pubkey ~/.config/solana/id.json
+          echo "Balance:"
           solana balance
 
-      - name: Build with Verbose Output
+      - name: Build Staking Contract
         run: |
-          echo "=== Cleaning ==="
           rm -rf target Cargo.lock ~/.cache/solana
-          
-          echo ""
-          echo "=== Building with anchor build --verbose ==="
-          anchor build -p dregan_staking --verbose 2>&1 | tail -100
-          
-          echo ""
-          echo "=== Checking all possible output locations ==="
-          echo "1. target/deploy/"
-          ls -la target/deploy/ 2>/dev/null || echo "  Not found"
-          
-          echo "2. target/sbf-solana-solana/release/"
-          ls -la target/sbf-solana-solana/release/ 2>/dev/null || echo "  Not found"
-          
-          echo "3. programs/dregan-staking/target/deploy/"
-          ls -la programs/dregan-staking/target/deploy/ 2>/dev/null || echo "  Not found"
-          
-          echo "4. Find all .so files"
-          find . -name "*.so" -type f 2>/dev/null || echo "  No .so files found"
-          
-          echo "5. Check target directory structure"
-          find target -type d 2>/dev/null | head -30 || echo "  target dir not found"
+          anchor build -p dregan_staking
 
-      - name: Try Direct Build
-        if: failure()
+      - name: Deploy Staking Contract
         run: |
-          echo "=== Trying cargo build-sbf directly ==="
-          cd programs/dregan-staking
-          cargo build-sbf --verbose 2>&1 | tail -50
+          echo "=== Finding .so file ==="
+          SO_FILE=$(find . -name "dregan_staking.so" -type f 2>/dev/null | head -1)
+          
+          if [ -z "$SO_FILE" ]; then
+            echo "Checking sbf output..."
+            SO_FILE=$(find . -name "*.so" -path "*release*" -type f 2>/dev/null | head -1)
+          fi
+          
+          if [ -z "$SO_FILE" ]; then
+            echo "ERROR: No .so file found"
+            find . -type f -name "*.so" 2>/dev/null
+            exit 1
+          fi
+          
+          echo "Deploying: $SO_FILE"
+          ls -lh "$SO_FILE"
           
           echo ""
-          echo "=== Check output ==="
-          find ../.. -name "*.so" -type f 2>/dev/null
+          echo "=== Deploying to Devnet ==="
+          
+          # Deploy with retries for network issues
+          for i in 1 2 3; do
+            echo "Attempt $i..."
+            if solana program deploy "$SO_FILE" --url https://api.devnet.solana.com; then
+              echo ""
+              echo "=========================================="
+              echo "STAKING CONTRACT DEPLOYED SUCCESSFULLY!"
+              echo "=========================================="
+              exit 0
+            fi
+            echo "Retry in 30s..."
+            sleep 30
+          done
+          
+          echo "Deployment failed after 3 attempts"
+          exit 1
