@@ -42,8 +42,10 @@ jobs:
           echo "=== Balance ==="
           solana balance
           
-      - name: Build All Programs
+      - name: Clean and Build
         run: |
+          rm -f Cargo.lock
+          rm -f programs/*/Cargo.lock
           anchor build
           ls -la target/deploy/
           
