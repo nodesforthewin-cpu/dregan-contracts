@@ -26,8 +26,11 @@ jobs:
           curl -sSfL https://release.anza.xyz/v1.18.18/install | sh
           echo "/home/runner/.local/share/solana/install/active_release/bin" >> $GITHUB_PATH
 
-      - name: Verify Solana
-        run: solana --version
+      - name: Verify Tools
+        run: |
+          solana --version
+          rustc --version
+          cargo --version
 
       - name: Install Anchor CLI 0.29.0
         run: npm install -g @coral-xyz/anchor-cli@0.29.0
@@ -46,8 +49,17 @@ jobs:
 
       - name: Build Staking Contract
         run: |
+          echo "=== Cleaning build artifacts ==="
           rm -rf target Cargo.lock ~/.cache/solana
-          anchor build -p dregan_staking
+          
+          echo ""
+          echo "=== Running anchor build ==="
+          anchor build -p dregan_staking 2>&1
+          
+          echo ""
+          echo "=== Build completed, checking output ==="
+          ls -la target/deploy/ || echo "target/deploy not found"
+          find . -name "*.so" -type f 2>/dev/null
 
       - name: Deploy Staking Contract
         run: |
@@ -55,13 +67,12 @@ jobs:
           SO_FILE=$(find . -name "dregan_staking.so" -type f 2>/dev/null | head -1)
           
           if [ -z "$SO_FILE" ]; then
-            echo "Checking sbf output..."
-            SO_FILE=$(find . -name "*.so" -path "*release*" -type f 2>/dev/null | head -1)
+            echo "Looking for any .so file..."
+            SO_FILE=$(find . -name "*.so" -type f 2>/dev/null | head -1)
           fi
           
           if [ -z "$SO_FILE" ]; then
-            echo "ERROR: No .so file found"
-            find . -type f -name "*.so" 2>/dev/null
+            echo "ERROR: No .so file found after build"
             exit 1
           fi
           
@@ -70,20 +81,9 @@ jobs:
           
           echo ""
           echo "=== Deploying to Devnet ==="
+          solana program deploy "$SO_FILE" --url https://api.devnet.solana.com
           
-          # Deploy with retries for network issues
-          for i in 1 2 3; do
-            echo "Attempt $i..."
-            if solana program deploy "$SO_FILE" --url https://api.devnet.solana.com; then
-              echo ""
-              echo "=========================================="
-              echo "STAKING CONTRACT DEPLOYED SUCCESSFULLY!"
-              echo "=========================================="
-              exit 0
-            fi
-            echo "Retry in 30s..."
-            sleep 30
-          done
-          
-          echo "Deployment failed after 3 attempts"
-          exit 1
+          echo ""
+          echo "=========================================="
+          echo "STAKING CONTRACT DEPLOYED SUCCESSFULLY!"
+          echo "=========================================="
