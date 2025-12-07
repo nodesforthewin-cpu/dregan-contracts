@@ -16,15 +16,15 @@ jobs:
         with:
           node-version: '20'
 
-      - name: Install Rust 1.75
+      - name: Install Rust 1.68
         run: |
-          curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y --default-toolchain 1.75.0
+          curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y --default-toolchain 1.68.0
           echo "/home/runner/.cargo/bin" >> $GITHUB_PATH
           source "$HOME/.cargo/env"
 
-      - name: Install Solana CLI 1.18.10
+      - name: Install Solana CLI 1.17.28
         run: |
-          sh -c "$(curl -sSfL https://release.anza.xyz/v1.18.10/install)"
+          sh -c "$(curl -sSfL https://release.anza.xyz/v1.17.28/install)"
           echo "/home/runner/.local/share/solana/install/active_release/bin" >> $GITHUB_PATH
 
       - name: Verify Tools
@@ -45,26 +45,12 @@ jobs:
           echo "Balance:"
           solana balance
 
-      - name: Generate Compatible Cargo.lock
+      - name: Build Staking Contract
         run: |
           echo "=== Cleaning ==="
           rm -rf target Cargo.lock ~/.cargo/registry/cache
           
-          echo "=== Generating Cargo.lock with pinned versions ==="
-          # First create basic lockfile
-          cargo generate-lockfile
-          
-          # Pin specific problematic crates
-          cargo update -p indexmap --precise 2.2.6 || echo "indexmap pin attempted"
-          cargo update -p base64ct --precise 1.6.0 || echo "base64ct pin attempted"
-          cargo update -p toml_edit --precise 0.20.7 || echo "toml_edit pin attempted"
-          cargo update -p toml_datetime --precise 0.6.5 || echo "toml_datetime pin attempted"
-          
-          echo "=== Lockfile head ==="
-          head -50 Cargo.lock 2>/dev/null || echo "No lock yet"
-
-      - name: Build Staking Contract
-        run: |
+          echo ""
           echo "=== Building dregan-staking ==="
           cd programs/dregan-staking
           cargo build-sbf 2>&1
