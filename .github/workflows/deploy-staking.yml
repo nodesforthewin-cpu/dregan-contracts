@@ -22,9 +22,9 @@ jobs:
           echo "/home/runner/.cargo/bin" >> $GITHUB_PATH
           source "$HOME/.cargo/env"
 
-      - name: Install Solana CLI 2.0.18
+      - name: Install Solana CLI 2.1.6
         run: |
-          sh -c "$(curl -sSfL https://release.anza.xyz/v2.0.18/install)"
+          sh -c "$(curl -sSfL https://release.anza.xyz/v2.1.6/install)"
           echo "/home/runner/.local/share/solana/install/active_release/bin" >> $GITHUB_PATH
 
       - name: Verify Tools
