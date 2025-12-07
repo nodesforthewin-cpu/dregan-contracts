@@ -18,31 +18,42 @@ jobs:
           solana-cli-version: '1.18.18'
           node-version: '20'
 
-      - name: Add Solana to PATH
-        run: echo "$HOME/.local/share/solana/install/active_release/bin" >> $GITHUB_PATH
-        shell: bash
-
       - name: Setup Deployer Wallet
         run: |
+          export PATH="$HOME/.local/share/solana/install/active_release/bin:$PATH"
+          echo "Verifying Solana CLI..."
+          solana --version
+          solana-keygen --version
+          
           mkdir -p ~/.config/solana
           echo '${{ secrets.DEPLOY_WALLET }}' > ~/.config/solana/id.json
           chmod 600 ~/.config/solana/id.json
+          
+          echo "Deployer public key:"
           solana-keygen pubkey ~/.config/solana/id.json
+          
           solana config set --url https://api.devnet.solana.com
           solana config set --keypair ~/.config/solana/id.json
+          
+          echo "Wallet balance:"
           solana balance
         shell: bash
 
       - name: Build Staking Program
-        run: anchor build -p dregan_staking
+        run: |
+          export PATH="$HOME/.local/share/solana/install/active_release/bin:$PATH"
+          anchor build -p dregan_staking
         shell: bash
 
       - name: Build NFT Program
-        run: anchor build -p dregan_nft
+        run: |
+          export PATH="$HOME/.local/share/solana/install/active_release/bin:$PATH"
+          anchor build -p dregan_nft
         shell: bash
 
       - name: Deploy Staking Program
         run: |
+          export PATH="$HOME/.local/share/solana/install/active_release/bin:$PATH"
           echo "Deploying Staking Program..."
           solana program deploy target/deploy/dregan_staking.so --program-id target/deploy/dregan_staking-keypair.json
           STAKING_ID=$(solana-keygen pubkey target/deploy/dregan_staking-keypair.json)
@@ -52,6 +63,7 @@ jobs:
 
       - name: Deploy NFT Program
         run: |
+          export PATH="$HOME/.local/share/solana/install/active_release/bin:$PATH"
           echo "Deploying NFT Program..."
           solana program deploy target/deploy/dregan_nft.so --program-id target/deploy/dregan_nft-keypair.json
           NFT_ID=$(solana-keygen pubkey target/deploy/dregan_nft-keypair.json)
