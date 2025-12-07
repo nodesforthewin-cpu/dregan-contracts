@@ -16,9 +16,9 @@ jobs:
         with:
           node-version: '20'
 
-      - name: Install Rust 1.75 (compatible with Anchor 0.29)
+      - name: Install Rust 1.79 (last version before Cargo.lock v4)
         run: |
-          curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y --default-toolchain 1.75.0
+          curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y --default-toolchain 1.79.0
           echo "/home/runner/.cargo/bin" >> $GITHUB_PATH
 
       - name: Install Solana CLI via Anza
@@ -52,6 +52,10 @@ jobs:
           echo ""
           echo "=== Generating fresh Cargo.lock ==="
           cargo generate-lockfile
+          
+          echo ""
+          echo "=== Cargo.lock version ==="
+          head -5 Cargo.lock
           
           echo ""
           echo "=== Building with cargo build-sbf ==="
