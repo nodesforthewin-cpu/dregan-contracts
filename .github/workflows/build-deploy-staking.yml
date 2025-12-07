@@ -50,24 +50,36 @@ jobs:
           rm -rf target Cargo.lock ~/.cache/solana
           
           echo ""
+          echo "=== Generating lockfile with patched deps ==="
+          cargo generate-lockfile
+          
+          echo ""
           echo "=== Building dregan-staking ==="
-          cd programs/dregan-staking
+          cd dregan-staking/programs/dregan-staking
           cargo build-sbf 2>&1
           
           echo ""
           echo "=== Verifying .so file ==="
-          cd ../..
-          if [ ! -f "target/deploy/dregan_staking.so" ]; then
-            echo "ERROR: dregan_staking.so not found"
-            exit 1
-          fi
-          ls -lh target/deploy/dregan_staking.so
+          cd ../../..
+          find . -name "*.so" -type f 2>/dev/null
+          ls -lh target/deploy/dregan_staking.so 2>/dev/null || echo "Checking alternate location..."
+          ls -lh dregan-staking/target/deploy/dregan_staking.so 2>/dev/null || echo "Build output not found"
 
       - name: Deploy Staking Contract
         run: |
-          echo "=== Deploying to Devnet ==="
-          solana program deploy target/deploy/dregan_staking.so \
-            --url https://api.devnet.solana.com
+          SO_FILE=$(find . -name "dregan_staking.so" -type f 2>/dev/null | head -1)
+          
+          if [ -z "$SO_FILE" ]; then
+            echo "ERROR: dregan_staking.so not found"
+            exit 1
+          fi
+          
+          echo "Deploying: $SO_FILE"
+          ls -lh "$SO_FILE"
+          
+          solana program deploy "$SO_FILE" --url https://api.devnet.solana.com
           
           echo ""
-          echo "✓ DEPLOYMENT SUCCESSFUL!"
+          echo "=========================================="
+          echo "STAKING CONTRACT DEPLOYED SUCCESSFULLY!"
+          echo "=========================================="
