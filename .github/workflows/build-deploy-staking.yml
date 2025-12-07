@@ -3,6 +3,10 @@ name: Build and Deploy DREGAN Contracts
 on:
   workflow_dispatch:
 
+env:
+  SOLANA_PATH: /home/runner/.local/share/solana/install/active_release/bin
+  CARGO_PATH: /home/runner/.cargo/bin
+
 jobs:
   build-deploy:
     runs-on: ubuntu-latest
@@ -21,6 +25,7 @@ jobs:
           curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y
           source $HOME/.cargo/env
           rustup component add rustfmt
+          echo "$HOME/.cargo/bin" >> $GITHUB_PATH
 
       - name: Install Solana CLI
         run: |
@@ -31,12 +36,11 @@ jobs:
         run: |
           npm install -g @coral-xyz/anchor-cli@0.30.1
 
-      - name: Add Cargo to PATH
-        run: |
-          echo "$HOME/.cargo/bin" >> $GITHUB_PATH
-
       - name: Verify Installation
         run: |
+          echo "Checking installations..."
+          which solana || echo "solana not in PATH yet"
+          which anchor || echo "anchor not in PATH yet"
           solana --version
           anchor --version
           cargo --version
