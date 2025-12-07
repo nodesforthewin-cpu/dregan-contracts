@@ -3,10 +3,6 @@ name: Build and Deploy DREGAN Contracts
 on:
   workflow_dispatch:
 
-env:
-  SOLANA_VERSION: v1.18.18
-  ANCHOR_VERSION: 0.30.1
-
 jobs:
   build-deploy:
     runs-on: ubuntu-latest
@@ -20,22 +16,9 @@ jobs:
         with:
           node-version: '20'
 
-      - name: Cache Solana CLI
-        uses: actions/cache@v4
-        id: cache-solana
-        with:
-          path: |
-            ~/.local/share/solana
-            ~/.cache/solana
-          key: solana-${{ env.SOLANA_VERSION }}
-
       - name: Install Solana CLI
-        if: steps.cache-solana.outputs.cache-hit != 'true'
         run: |
-          sh -c "$(curl -sSfL https://release.solana.com/${{ env.SOLANA_VERSION }}/install)"
-
-      - name: Add Solana to PATH
-        run: |
+          sh -c "$(curl -sSfL https://release.solana.com/v1.18.18/install)"
           echo "$HOME/.local/share/solana/install/active_release/bin" >> $GITHUB_PATH
 
       - name: Install Rust
@@ -44,40 +27,37 @@ jobs:
           echo "$HOME/.cargo/bin" >> $GITHUB_PATH
 
       - name: Install Anchor CLI
-        run: npm install -g @coral-xyz/anchor-cli@${{ env.ANCHOR_VERSION }}
+        run: npm install -g @coral-xyz/anchor-cli@0.30.1
 
-      - name: Verify Installations
+      - name: Write Keypairs
         run: |
-          echo "PATH: $PATH"
-          solana --version
-          anchor --version
-          solana-keygen --version
-
-      - name: Setup Deployer Wallet
-        run: |
-          mkdir -p ~/.config/solana
+          mkdir -p ~/.config/solana target/deploy
+          
+          # Write deployer keypair
           echo '${{ secrets.DEPLOY_WALLET }}' > ~/.config/solana/id.json
           chmod 600 ~/.config/solana/id.json
           
-          echo "Deployer public key:"
-          solana-keygen pubkey ~/.config/solana/id.json
-          
+          # Configure Solana CLI
           solana config set --url https://api.devnet.solana.com
           solana config set --keypair ~/.config/solana/id.json
+          
+          # Show deployer info
+          echo "Deployer public key:"
+          solana-keygen pubkey ~/.config/solana/id.json
           
           echo "Wallet balance:"
           solana balance
 
-      - name: Build Staking Program
-        run: anchor build -p dregan_staking
-
-      - name: Build NFT Program
-        run: anchor build -p dregan_nft
+      - name: Build Programs
+        run: |
+          anchor build
+          echo "Build complete. Generated keypairs:"
+          ls -la target/deploy/
 
       - name: Deploy Staking Program
         run: |
           echo "Deploying Staking Program..."
-          solana program deploy target/deploy/dregan_staking.so --program-id target/deploy/dregan_staking-keypair.json
+          anchor deploy --provider.cluster devnet --program-name dregan_staking
           STAKING_ID=$(solana-keygen pubkey target/deploy/dregan_staking-keypair.json)
           echo "STAKING_PROGRAM_ID=$STAKING_ID" >> $GITHUB_ENV
           echo "Staking Program ID: $STAKING_ID"
@@ -85,7 +65,7 @@ jobs:
       - name: Deploy NFT Program
         run: |
           echo "Deploying NFT Program..."
-          solana program deploy target/deploy/dregan_nft.so --program-id target/deploy/dregan_nft-keypair.json
+          anchor deploy --provider.cluster devnet --program-name dregan_nft
           NFT_ID=$(solana-keygen pubkey target/deploy/dregan_nft-keypair.json)
           echo "NFT_PROGRAM_ID=$NFT_ID" >> $GITHUB_ENV
           echo "NFT Program ID: $NFT_ID"
@@ -98,3 +78,6 @@ jobs:
           echo "Staking Program ID: $STAKING_PROGRAM_ID"
           echo "NFT Program ID: $NFT_PROGRAM_ID"
           echo "============================================"
+          echo ""
+          echo "IMPORTANT: Save these program IDs!"
+          echo "The program keypairs are in target/deploy/"
