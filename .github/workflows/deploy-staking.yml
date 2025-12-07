@@ -16,7 +16,7 @@ jobs:
         with:
           node-version: '20'
 
-      - name: Install Rust stable (latest)
+      - name: Install Rust stable
         run: |
           curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y --default-toolchain stable
           echo "/home/runner/.cargo/bin" >> $GITHUB_PATH
@@ -31,7 +31,6 @@ jobs:
           solana --version
           rustc --version
           cargo --version
-          cargo-build-sbf --version || echo "cargo-build-sbf version check skipped"
 
       - name: Setup Wallet
         run: |
@@ -53,6 +52,11 @@ jobs:
           echo ""
           echo "=== Generating lockfile ==="
           cargo generate-lockfile
+          
+          echo ""
+          echo "=== Pinning compatible dependency versions for rustc 1.79 ==="
+          cargo update base64ct --precise 1.6.0
+          cargo update indexmap --precise 2.2.6
           
           echo ""
           echo "=== Building dregan-staking ==="
