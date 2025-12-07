@@ -16,14 +16,14 @@ jobs:
         with:
           node-version: '20'
 
-      - name: Install Rust 1.68
+      - name: Install Rust 1.70
         run: |
-          curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y --default-toolchain 1.68.0
+          curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y --default-toolchain 1.70.0
           echo "/home/runner/.cargo/bin" >> $GITHUB_PATH
 
-      - name: Install Solana CLI 1.16.27
+      - name: Install Solana CLI 1.17.31
         run: |
-          sh -c "$(curl -sSfL https://release.anza.xyz/v1.16.27/install)"
+          sh -c "$(curl -sSfL https://release.anza.xyz/v1.17.31/install)"
           echo "/home/runner/.local/share/solana/install/active_release/bin" >> $GITHUB_PATH
 
       - name: Verify Tools
@@ -52,7 +52,7 @@ jobs:
           echo ""
           echo "=== Building dregan-staking ==="
           cd programs/dregan-staking
-          cargo build-bpf 2>&1 || cargo build-sbf 2>&1
+          cargo build-sbf 2>&1
           
           echo ""
           echo "=== Verifying .so file ==="
