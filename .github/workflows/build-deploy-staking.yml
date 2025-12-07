@@ -3,99 +3,92 @@ name: Build and Deploy DREGAN Contracts
 on:
   workflow_dispatch:
 
+env:
+  SOLANA_VERSION: v1.18.18
+  ANCHOR_VERSION: 0.30.1
+
 jobs:
   build-deploy:
     runs-on: ubuntu-latest
     timeout-minutes: 60
-    env:
-      SOLANA_BIN: /home/runner/.local/share/solana/install/active_release/bin
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Setup Anchor and Solana
-        uses: metadaoproject/setup-anchor@v3.1
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
         with:
-          anchor-version: '0.30.1'
-          solana-cli-version: '1.18.18'
           node-version: '20'
 
-      - name: Find Solana Installation
+      - name: Cache Solana CLI
+        uses: actions/cache@v4
+        id: cache-solana
+        with:
+          path: |
+            ~/.local/share/solana
+            ~/.cache/solana
+          key: solana-${{ env.SOLANA_VERSION }}
+
+      - name: Install Solana CLI
+        if: steps.cache-solana.outputs.cache-hit != 'true'
         run: |
-          echo "Looking for Solana installation..."
-          find /home/runner -name "solana" -type f 2>/dev/null | head -10 || true
-          find /home/runner -name "solana-keygen" -type f 2>/dev/null | head -10 || true
-          ls -la ~/.local/share/solana/install/active_release/bin/ 2>/dev/null || echo "Default path not found"
-          which solana 2>/dev/null || echo "solana not in PATH"
-          echo "Current PATH: $PATH"
-        shell: bash
+          sh -c "$(curl -sSfL https://release.solana.com/${{ env.SOLANA_VERSION }}/install)"
+
+      - name: Add Solana to PATH
+        run: |
+          echo "$HOME/.local/share/solana/install/active_release/bin" >> $GITHUB_PATH
+
+      - name: Install Rust
+        run: |
+          curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y
+          echo "$HOME/.cargo/bin" >> $GITHUB_PATH
+
+      - name: Install Anchor CLI
+        run: npm install -g @coral-xyz/anchor-cli@${{ env.ANCHOR_VERSION }}
+
+      - name: Verify Installations
+        run: |
+          echo "PATH: $PATH"
+          solana --version
+          anchor --version
+          solana-keygen --version
 
       - name: Setup Deployer Wallet
         run: |
-          # Try multiple possible locations
-          if [ -f "$HOME/.local/share/solana/install/active_release/bin/solana" ]; then
-            export PATH="$HOME/.local/share/solana/install/active_release/bin:$PATH"
-          elif [ -f "/home/runner/.solana/bin/solana" ]; then
-            export PATH="/home/runner/.solana/bin:$PATH"
-          fi
-          
-          echo "Checking solana..."
-          which solana || { echo "Trying absolute path..."; }
-          
-          # Use absolute path as fallback
-          SOLANA_BIN=$(find /home/runner -name "solana" -type f 2>/dev/null | grep -v ".crates" | head -1)
-          SOLANA_DIR=$(dirname "$SOLANA_BIN")
-          export PATH="$SOLANA_DIR:$PATH"
-          
-          echo "Using Solana from: $SOLANA_DIR"
-          solana --version
-          solana-keygen --version
-          
           mkdir -p ~/.config/solana
           echo '${{ secrets.DEPLOY_WALLET }}' > ~/.config/solana/id.json
           chmod 600 ~/.config/solana/id.json
           
+          echo "Deployer public key:"
           solana-keygen pubkey ~/.config/solana/id.json
+          
           solana config set --url https://api.devnet.solana.com
           solana config set --keypair ~/.config/solana/id.json
+          
+          echo "Wallet balance:"
           solana balance
-        shell: bash
 
       - name: Build Staking Program
-        run: |
-          SOLANA_BIN=$(find /home/runner -name "solana" -type f 2>/dev/null | grep -v ".crates" | head -1)
-          export PATH="$(dirname $SOLANA_BIN):$PATH"
-          anchor build -p dregan_staking
-        shell: bash
+        run: anchor build -p dregan_staking
 
       - name: Build NFT Program
-        run: |
-          SOLANA_BIN=$(find /home/runner -name "solana" -type f 2>/dev/null | grep -v ".crates" | head -1)
-          export PATH="$(dirname $SOLANA_BIN):$PATH"
-          anchor build -p dregan_nft
-        shell: bash
+        run: anchor build -p dregan_nft
 
       - name: Deploy Staking Program
         run: |
-          SOLANA_BIN=$(find /home/runner -name "solana" -type f 2>/dev/null | grep -v ".crates" | head -1)
-          export PATH="$(dirname $SOLANA_BIN):$PATH"
           echo "Deploying Staking Program..."
           solana program deploy target/deploy/dregan_staking.so --program-id target/deploy/dregan_staking-keypair.json
           STAKING_ID=$(solana-keygen pubkey target/deploy/dregan_staking-keypair.json)
           echo "STAKING_PROGRAM_ID=$STAKING_ID" >> $GITHUB_ENV
           echo "Staking Program ID: $STAKING_ID"
-        shell: bash
 
       - name: Deploy NFT Program
         run: |
-          SOLANA_BIN=$(find /home/runner -name "solana" -type f 2>/dev/null | grep -v ".crates" | head -1)
-          export PATH="$(dirname $SOLANA_BIN):$PATH"
           echo "Deploying NFT Program..."
           solana program deploy target/deploy/dregan_nft.so --program-id target/deploy/dregan_nft-keypair.json
           NFT_ID=$(solana-keygen pubkey target/deploy/dregan_nft-keypair.json)
           echo "NFT_PROGRAM_ID=$NFT_ID" >> $GITHUB_ENV
           echo "NFT Program ID: $NFT_ID"
-        shell: bash
 
       - name: Deployment Summary
         run: |
@@ -105,4 +98,3 @@ jobs:
           echo "Staking Program ID: $STAKING_PROGRAM_ID"
           echo "NFT Program ID: $NFT_PROGRAM_ID"
           echo "============================================"
-        shell: bash
