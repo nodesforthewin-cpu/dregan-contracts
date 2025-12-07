@@ -4,12 +4,3 @@ members = [
     "programs/dregan-staking",
     "programs/dregan-nft"
 ]
-
-# Pin problematic crates to versions compatible with rustc 1.68-1.75
-[patch.crates-io]
-# indexmap 2.2.6 is the last version that works with rustc 1.68
-indexmap = { version = "=2.2.6" }
-# toml_datetime 0.6.5 works with rustc 1.68  
-toml_datetime = { version = "=0.6.5" }
-# toml_edit 0.20.7 works with rustc 1.68
-toml_edit = { version = "=0.20.7" }
