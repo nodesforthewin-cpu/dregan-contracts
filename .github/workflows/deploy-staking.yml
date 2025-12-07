@@ -22,9 +22,9 @@ jobs:
           echo "/home/runner/.cargo/bin" >> $GITHUB_PATH
           source "$HOME/.cargo/env"
 
-      - name: Install Solana CLI 2.1.6
+      - name: Install Solana CLI 2.0.18
         run: |
-          sh -c "$(curl -sSfL https://release.anza.xyz/v2.1.6/install)"
+          sh -c "$(curl -sSfL https://release.anza.xyz/v2.0.18/install)"
           echo "/home/runner/.local/share/solana/install/active_release/bin" >> $GITHUB_PATH
 
       - name: Verify Tools
@@ -32,6 +32,8 @@ jobs:
           solana --version
           rustc --version
           cargo --version
+          echo "Checking Solana platform tools..."
+          ls -la ~/.local/share/solana/install/active_release/bin/sdk/sbf/dependencies/platform-tools/rust/bin/ 2>/dev/null || echo "Path may differ"
 
       - name: Setup Wallet
         run: |
@@ -45,15 +47,34 @@ jobs:
           echo "Balance:"
           solana balance
 
-      - name: Build Staking Contract
+      - name: Build with cargo-build-sbf
+        env:
+          CARGO_INCREMENTAL: "0"
         run: |
           echo "=== Cleaning ==="
-          rm -rf target Cargo.lock
+          rm -rf target Cargo.lock ~/.cargo/registry/cache
           
           echo ""
-          echo "=== Building dregan-staking ==="
+          echo "=== Check Solana bundled rustc version ==="
+          SBF_RUSTC=$(find ~/.local/share/solana -name "rustc" -type f 2>/dev/null | head -1)
+          if [ -n "$SBF_RUSTC" ]; then
+            $SBF_RUSTC --version
+          fi
+          
+          echo ""
+          echo "=== Building dregan-staking (letting cargo-build-sbf manage deps) ==="
           cd programs/dregan-staking
-          cargo build-sbf 2>&1
+          
+          # Let cargo-build-sbf handle everything including dependency resolution
+          cargo build-sbf --verbose 2>&1 || {
+            echo ""
+            echo "=== Build failed, checking bundled cargo version ==="
+            SBF_CARGO=$(find ~/.local/share/solana -name "cargo" -type f 2>/dev/null | head -1)
+            if [ -n "$SBF_CARGO" ]; then
+              $SBF_CARGO --version
+            fi
+            exit 1
+          }
           
           echo ""
           echo "=== Verifying .so file ==="
