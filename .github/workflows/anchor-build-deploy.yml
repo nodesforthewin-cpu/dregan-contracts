@@ -23,7 +23,7 @@ jobs:
       priority-fee: ${{ github.event.inputs.priority_fee }}
     secrets:
       DEVNET_SOLANA_DEPLOY_URL: https://api.devnet.solana.com
-      DEVNET_DEPLOYER_KEYPAIR: ${{ secrets.DEPLOY_WALLET }}
+      DEVNET_DEPLOYER_KEYPAIR: ${{ secrets.DEVNET_DEPLOYER_KEYPAIR }}
 
   build-nft:
     uses: solana-developers/github-workflows/.github/workflows/reusable-build.yaml@v0.2.9
@@ -39,4 +39,4 @@ jobs:
       priority-fee: ${{ github.event.inputs.priority_fee }}
     secrets:
       DEVNET_SOLANA_DEPLOY_URL: https://api.devnet.solana.com
-      DEVNET_DEPLOYER_KEYPAIR: ${{ secrets.DEPLOY_WALLET }}
+      DEVNET_DEPLOYER_KEYPAIR: ${{ secrets.DEVNET_DEPLOYER_KEYPAIR }}
