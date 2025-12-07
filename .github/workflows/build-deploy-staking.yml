@@ -47,8 +47,18 @@ jobs:
           echo "Balance:"
           solana balance
 
-      - name: Build Staking Contract
-        run: anchor build -p dregan_staking
+      - name: Verify Cargo.toml
+        run: |
+          echo "=== Cargo.toml contents ==="
+          cat Cargo.toml
+          echo ""
+          echo "=== Checking overflow-checks ==="
+          grep -n "overflow-checks" Cargo.toml || echo "NOT FOUND!"
+
+      - name: Clean and Build Staking Contract
+        run: |
+          rm -rf target Cargo.lock
+          anchor build -p dregan_staking --skip-lint
 
       - name: Deploy Staking Contract
         run: |
