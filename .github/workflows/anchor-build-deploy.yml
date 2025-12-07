@@ -24,11 +24,12 @@ jobs:
       - name: Cache Cargo
         uses: Swatinem/rust-cache@v2
           
-      - name: Download Solana
+      - name: Install Solana via script
         run: |
-          curl -sSfL https://release.solana.com/v1.18.18/solana-release-x86_64-unknown-linux-gnu.tar.bz2 -o solana.tar.bz2
-          tar -xjf solana.tar.bz2
-          echo "$PWD/solana-release/bin" >> $GITHUB_PATH
+          sh -c "$(curl -sSfL https://release.solana.com/stable/install)"
+          export PATH="$HOME/.local/share/solana/install/active_release/bin:$PATH"
+          solana --version
+          echo "$HOME/.local/share/solana/install/active_release/bin" >> $GITHUB_PATH
           
       - name: Install Anchor
         run: |
