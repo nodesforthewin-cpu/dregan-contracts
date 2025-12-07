@@ -6,5 +6,5 @@ members = [
 ]
 
 [workspace.dependencies]
-solana-program = "=1.18.10"
+solana-program = "=1.17.28"
 borsh = "=0.10.3"
