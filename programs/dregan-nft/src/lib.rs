@@ -6,24 +6,23 @@ use solana_program::{
     program_error::ProgramError,
     pubkey::Pubkey,
 };
-use borsh::{BorshDeserialize, BorshSerialize};
+use borsh::{BorshDeserialize, BorshSerialize, to_vec};
 
-// DREGAN NFT Access Control - Native Solana Implementation
+// DREGAN NFT Access Control - Native Solana 2.0 Implementation
 // Tiers: BASIC, PRO, ELITE based on DREGAN token holdings
 
 solana_program::declare_id!("7vSfwTmJCMKbZxZdBKntNgNrLiQysYrTiGjP7HzHjjUZ");
 
-// Access tier thresholds (in DREGAN tokens with 9 decimals)
-pub const BASIC_THRESHOLD: u64 = 100_000_000_000;   // 100 DREGAN
-pub const PRO_THRESHOLD: u64 = 500_000_000_000;     // 500 DREGAN
-pub const ELITE_THRESHOLD: u64 = 1_000_000_000_000; // 1000 DREGAN
+pub const BASIC_THRESHOLD: u64 = 100_000_000_000;
+pub const PRO_THRESHOLD: u64 = 500_000_000_000;
+pub const ELITE_THRESHOLD: u64 = 1_000_000_000_000;
 
 #[derive(BorshSerialize, BorshDeserialize, Debug, Clone, PartialEq)]
 pub enum AccessTier {
     None,
-    Basic,  // 100+ DREGAN: Token Sniper, Basic Alerts
-    Pro,    // 500+ DREGAN: Advanced Sniper, AI Signals
-    Elite,  // 1000+ DREGAN: Full Platform, Priority Access
+    Basic,
+    Pro,
+    Elite,
 }
 
 impl AccessTier {
@@ -52,6 +51,15 @@ pub struct AccessAccount {
 
 impl AccessAccount {
     pub const LEN: usize = 1 + 32 + 1 + 8 + 8 + 1;
+    
+    pub fn save(&self, data: &mut [u8]) -> Result<(), ProgramError> {
+        let bytes = to_vec(self).map_err(|_| ProgramError::InvalidAccountData)?;
+        if bytes.len() > data.len() {
+            return Err(ProgramError::AccountDataTooSmall);
+        }
+        data[..bytes.len()].copy_from_slice(&bytes);
+        Ok(())
+    }
 }
 
 #[derive(BorshSerialize, BorshDeserialize, Debug)]
@@ -100,26 +108,16 @@ fn process_initialize(
         return Err(ProgramError::MissingRequiredSignature);
     }
     
-    let mut access_data = AccessAccount::try_from_slice(&access_account.data.borrow())
-        .unwrap_or(AccessAccount {
-            is_initialized: false,
-            owner: Pubkey::default(),
-            current_tier: AccessTier::None,
-            last_verified_balance: 0,
-            verification_timestamp: 0,
-            bump: 0,
-        });
+    let access_data = AccessAccount {
+        is_initialized: true,
+        owner: *owner.key,
+        current_tier: AccessTier::None,
+        last_verified_balance: 0,
+        verification_timestamp: 0,
+        bump,
+    };
     
-    if access_data.is_initialized {
-        return Err(ProgramError::AccountAlreadyInitialized);
-    }
-    
-    access_data.is_initialized = true;
-    access_data.owner = *owner.key;
-    access_data.bump = bump;
-    
-    access_data.serialize(&mut &mut access_account.data.borrow_mut()[..])?;
-    
+    access_data.save(&mut access_account.data.borrow_mut())?;
     msg!("Access account initialized for {}", owner.key);
     Ok(())
 }
@@ -149,13 +147,12 @@ fn process_verify_access(
     }
     
     let new_tier = AccessTier::from_balance(balance);
-    access_data.current_tier = new_tier.clone();
+    access_data.current_tier = new_tier;
     access_data.last_verified_balance = balance;
     access_data.verification_timestamp = timestamp;
     
-    access_data.serialize(&mut &mut access_account.data.borrow_mut()[..])?;
-    
-    msg!("Access verified: tier {:?}, balance {}", new_tier, balance);
+    access_data.save(&mut access_account.data.borrow_mut())?;
+    msg!("Access verified, balance {}", balance);
     Ok(())
 }
 
@@ -172,7 +169,6 @@ fn process_check_tier(
         return Err(ProgramError::UninitializedAccount);
     }
     
-    msg!("Current tier: {:?}, Last balance: {}", 
-         access_data.current_tier, access_data.last_verified_balance);
+    msg!("Last balance: {}", access_data.last_verified_balance);
     Ok(())
 }
