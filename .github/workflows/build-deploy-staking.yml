@@ -3,6 +3,10 @@ name: Deploy Staking Contract
 on:
   workflow_dispatch:
 
+env:
+  SOLANA_CLI_VERSION: 1.18.18
+  ANCHOR_VERSION: 0.30.1
+
 jobs:
   deploy-staking:
     runs-on: ubuntu-latest
@@ -11,52 +15,57 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: '20'
+      - name: Setup Rust
+        uses: dtolnay/rust-action@stable
 
-      - name: Install Rust
-        run: |
-          curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y
-          source "$HOME/.cargo/env"
-          rustc --version
-          cargo --version
+      - name: Cache Solana CLI
+        id: cache-solana
+        uses: actions/cache@v4
+        with:
+          path: ~/.local/share/solana
+          key: solana-${{ env.SOLANA_CLI_VERSION }}
 
       - name: Install Solana CLI
+        if: steps.cache-solana.outputs.cache-hit != 'true'
         run: |
-          sh -c "$(curl -sSfL https://release.solana.com/v1.18.18/install)"
-          export PATH="$HOME/.local/share/solana/install/active_release/bin:$PATH"
-          solana --version
+          sh -c "$(curl -sSfL https://release.anza.xyz/v${{ env.SOLANA_CLI_VERSION }}/install)"
+
+      - name: Add Solana to PATH
+        run: echo "$HOME/.local/share/solana/install/active_release/bin" >> $GITHUB_PATH
+
+      - name: Verify Solana
+        run: solana --version
 
       - name: Install Anchor CLI
         run: |
-          npm install -g @coral-xyz/anchor-cli@0.30.1
-          anchor --version
+          cargo install --git https://github.com/coral-xyz/anchor avm --locked --force
+          avm install ${{ env.ANCHOR_VERSION }}
+          avm use ${{ env.ANCHOR_VERSION }}
+
+      - name: Add Anchor to PATH  
+        run: echo "$HOME/.avm/bin" >> $GITHUB_PATH
+
+      - name: Verify Anchor
+        run: anchor --version
 
       - name: Setup Wallet
         run: |
-          export PATH="$HOME/.local/share/solana/install/active_release/bin:$PATH"
           mkdir -p ~/.config/solana
           echo '${{ secrets.DEPLOY_WALLET }}' > ~/.config/solana/id.json
           chmod 600 ~/.config/solana/id.json
           solana config set --url https://api.devnet.solana.com
           solana config set --keypair ~/.config/solana/id.json
-          echo "Deployer:"
+          echo "Deployer address:"
           solana-keygen pubkey ~/.config/solana/id.json
           echo "Balance:"
           solana balance
 
       - name: Build Staking Contract
-        run: |
-          source "$HOME/.cargo/env"
-          export PATH="$HOME/.local/share/solana/install/active_release/bin:$PATH"
-          anchor build -p dregan_staking
-          ls -la target/deploy/
+        run: anchor build -p dregan_staking
 
       - name: Deploy Staking Contract
         run: |
-          source "$HOME/.cargo/env"
-          export PATH="$HOME/.local/share/solana/install/active_release/bin:$PATH"
-          solana program deploy target/deploy/dregan_staking.so
-          echo "Staking Contract Deployed!"
+          echo "Deploying to Solana Devnet..."
+          solana program deploy target/deploy/dregan_staking.so --program-id target/deploy/dregan_staking-keypair.json
+          echo "STAKING CONTRACT DEPLOYED!"
+          solana-keygen pubkey target/deploy/dregan_staking-keypair.json
