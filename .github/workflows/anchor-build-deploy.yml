@@ -28,44 +28,52 @@ jobs:
           solana-cli-version: '1.18.18'
           node-version: '20'
           
+      - name: Find tools
+        run: |
+          echo "Looking for solana..."
+          find /home/runner -name "solana" -type f 2>/dev/null | head -5
+          echo "Looking for anchor..."
+          find /home/runner -name "anchor" -type f 2>/dev/null | head -5
+          echo "PATH: $PATH"
+          
       - name: Setup Wallet
         env:
           WALLET_KEY: ${{ secrets.DEPLOY_WALLET }}
-        shell: bash
         run: |
-          mkdir -p ~/.config/solana
-          echo "$WALLET_KEY" > ~/.config/solana/id.json
-          ~/.local/share/solana/install/active_release/bin/solana config set --keypair ~/.config/solana/id.json
-          ~/.local/share/solana/install/active_release/bin/solana config set --url https://api.devnet.solana.com
+          export PATH="$HOME/.local/share/solana/install/active_release/bin:$HOME/.avm/bin:$PATH"
+          mkdir -p $HOME/.config/solana
+          echo "$WALLET_KEY" > $HOME/.config/solana/id.json
+          solana config set --keypair $HOME/.config/solana/id.json
+          solana config set --url https://api.devnet.solana.com
           echo "=== Wallet Address ==="
-          ~/.local/share/solana/install/active_release/bin/solana address
+          solana address
           echo "=== Balance ==="
-          ~/.local/share/solana/install/active_release/bin/solana balance
+          solana balance
           
       - name: Build Staking Program
-        shell: bash
         run: |
+          export PATH="$HOME/.local/share/solana/install/active_release/bin:$HOME/.avm/bin:$PATH"
           cd programs/dregan-staking
-          ~/.avm/bin/anchor build
+          anchor build
           ls -la target/deploy/
           
       - name: Build NFT Program
-        shell: bash
         run: |
+          export PATH="$HOME/.local/share/solana/install/active_release/bin:$HOME/.avm/bin:$PATH"
           cd programs/dregan-nft
-          ~/.avm/bin/anchor build
+          anchor build
           ls -la target/deploy/
           
       - name: Deploy Staking Program
-        shell: bash
         run: |
+          export PATH="$HOME/.local/share/solana/install/active_release/bin:$PATH"
           cd programs/dregan-staking
           echo "Deploying Staking Program..."
-          ~/.local/share/solana/install/active_release/bin/solana program deploy target/deploy/dregan_staking.so
+          solana program deploy target/deploy/dregan_staking.so
           
       - name: Deploy NFT Program
-        shell: bash
         run: |
+          export PATH="$HOME/.local/share/solana/install/active_release/bin:$PATH"
           cd programs/dregan-nft
           echo "Deploying NFT Program..."
-          ~/.local/share/solana/install/active_release/bin/solana program deploy target/deploy/dregan_nft.so
+          solana program deploy target/deploy/dregan_nft.so
