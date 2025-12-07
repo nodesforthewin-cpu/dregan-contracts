@@ -4,3 +4,7 @@ members = [
     "programs/dregan-staking",
     "programs/dregan-nft"
 ]
+
+[workspace.dependencies]
+solana-program = "=1.18.10"
+borsh = "=0.10.3"
