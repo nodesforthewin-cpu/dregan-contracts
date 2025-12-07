@@ -16,12 +16,11 @@ jobs:
         with:
           node-version: '20'
 
-      - name: Install Rust stable (latest)
+      - name: Install Rust stable
         run: |
           curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y --default-toolchain stable
           echo "/home/runner/.cargo/bin" >> $GITHUB_PATH
           source "$HOME/.cargo/env"
-          rustc --version
 
       - name: Install Solana CLI 1.18.26
         run: |
@@ -46,12 +45,33 @@ jobs:
           echo "Balance:"
           solana balance
 
-      - name: Build Staking Contract
+      - name: Generate and Pin Compatible Cargo.lock
         run: |
-          echo "=== Cleaning ==="
-          rm -rf target ~/.cache/solana Cargo.lock
+          echo "=== Generating Cargo.lock with compatible versions ==="
+          rm -rf Cargo.lock target
+          
+          # First resolve all dependencies  
+          cargo metadata --format-version 1 > /dev/null 2>&1 || true
+          
+          # Now pin problematic crates to compatible versions
+          echo "Pinning indexmap to 2.7.0..."
+          cargo update indexmap --precise 2.7.0 || true
+          
+          echo "Pinning toml_datetime to 0.6.8..."
+          cargo update toml_datetime --precise 0.6.8 || true
+          
+          echo "Pinning toml_edit to 0.22.22..."
+          cargo update toml_edit --precise 0.22.22 || true
+          
+          echo "Pinning base64ct to 1.6.0..."
+          cargo update base64ct --precise 1.6.0 || true
           
           echo ""
+          echo "=== Cargo.lock generated ==="
+          head -100 Cargo.lock 2>/dev/null || echo "No lock yet"
+
+      - name: Build Staking Contract
+        run: |
           echo "=== Building dregan-staking ==="
           cd programs/dregan-staking
           cargo build-sbf 2>&1
