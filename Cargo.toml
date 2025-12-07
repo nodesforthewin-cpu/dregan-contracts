@@ -1,12 +1,16 @@
 [workspace]
-members = [
-    "programs/dregan-nft",
-    "programs/dregan-staking"
-]
 resolver = "2"
+members = [
+    "programs/dregan-staking",
+    "programs/dregan-nft"
+]
 
-[profile.release]
-overflow-checks = true
-lto = "fat"
-codegen-units = 1
-opt-level = 3
+[workspace.dependencies]
+anchor-lang = "0.24.2"
+anchor-spl = "0.24.2"
+
+[patch.crates-io]
+# Force older base64ct that does not require Rust 2024
+base64ct = { git = "https://github.com/RustCrypto/formats.git", tag = "base64ct-v1.6.0" }
+# Force older indexmap that does not require newer rustc
+indexmap = { git = "https://github.com/indexmap-rs/indexmap.git", tag = "2.2.6" }
