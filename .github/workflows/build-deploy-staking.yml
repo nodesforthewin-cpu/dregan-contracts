@@ -51,6 +51,16 @@ jobs:
           rm -rf target Cargo.lock ~/.cache/solana
           
           echo ""
+          echo "=== Generating fresh Cargo.lock ==="
+          cargo generate-lockfile
+          
+          echo ""
+          echo "=== Downgrading dependencies to rustc 1.75 compatibility ==="
+          cargo update -p toml_edit --precise 0.22.21 || true
+          cargo update -p toml_datetime --precise 0.6.5 || true
+          cargo update -p winnow --precise 0.5.40 || true
+          
+          echo ""
           echo "=== Building dregan-staking with cargo build-sbf ==="
           cd programs/dregan-staking
           cargo build-sbf 2>&1
