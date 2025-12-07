@@ -55,8 +55,18 @@ jobs:
           
           echo ""
           echo "=== Pinning compatible dependency versions for rustc 1.79 ==="
-          cargo update base64ct --precise 1.6.0
-          cargo update indexmap --precise 2.2.6
+          # Pin base64ct to a version that does not require edition 2024
+          cargo update base64ct@1.7.3 --precise 1.6.0 || cargo update base64ct --precise 1.6.0 || true
+          cargo update base64ct@1.8.1 --precise 1.6.0 || true
+          
+          # Pin indexmap - try different versions that might exist
+          cargo update indexmap@2.12.1 --precise 2.2.6 || true
+          cargo update indexmap@2.6.0 --precise 2.2.6 || true
+          cargo update indexmap@2.7.0 --precise 2.2.6 || true
+          
+          echo ""
+          echo "=== Lockfile after updates ==="
+          grep -E "base64ct|indexmap" Cargo.lock || true
           
           echo ""
           echo "=== Building dregan-staking ==="
