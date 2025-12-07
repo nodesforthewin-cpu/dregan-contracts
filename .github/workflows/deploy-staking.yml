@@ -50,20 +50,8 @@ jobs:
           rm -rf target ~/.cache/solana
           
           echo ""
-          echo "=== Generating lockfile with compatible versions ==="
-          rm -f Cargo.lock
-          cargo generate-lockfile
-          
-          echo ""
-          echo "=== Pinning compatible dependency versions for rustc 1.75 ==="
-          # Use @version syntax to specify which package to update
-          cargo update indexmap@2.12.1 --precise 2.2.6 || cargo update indexmap@2.11.0 --precise 2.2.6 || cargo update indexmap@2.10.0 --precise 2.2.6 || true
-          cargo update base64ct@1.8.1 --precise 1.6.0 || cargo update base64ct@1.7.3 --precise 1.6.0 || true
-          
-          echo ""
-          echo "=== Checking locked versions ==="
-          grep -A1 "name = \"indexmap\"" Cargo.lock | grep version | head -4
-          grep -A1 "name = \"base64ct\"" Cargo.lock | grep version | head -2
+          echo "=== Using locked dependencies (no cargo update) ==="
+          echo "If Cargo.lock exists, it will preserve pinned versions"
           
           echo ""
           echo "=== Building dregan-staking ==="
