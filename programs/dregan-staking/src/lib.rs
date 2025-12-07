@@ -8,18 +8,18 @@ use solana_program::{
     clock::Clock,
     sysvar::Sysvar,
 };
-use borsh::{BorshDeserialize, BorshSerialize, to_vec};
+use borsh::{BorshDeserialize, BorshSerialize};
 
-// DREGAN Staking Pool - Native Solana 2.0 Implementation
+// DREGAN Staking Pool - Native Solana Implementation
 // Tiers: 30-day (10% APY), 60-day (15% APY), 90-day (20% APY)
 
 solana_program::declare_id!("BPzxEKTjP4jguHTxAMchAqSqAkzpbNFH87C4eJpz2zfa");
 
 #[derive(BorshSerialize, BorshDeserialize, Debug, Clone, PartialEq)]
 pub enum StakeTier {
-    Basic,  // 30 days, 10% APY
-    Pro,    // 60 days, 15% APY
-    Elite,  // 90 days, 20% APY
+    Basic,
+    Pro,
+    Elite,
 }
 
 impl StakeTier {
@@ -60,15 +60,6 @@ impl StakeAccount {
         let seconds_per_year: u64 = 365 * 24 * 60 * 60;
         let apy = self.tier.apy_basis_points();
         (self.amount * apy * staking_duration) / (seconds_per_year * 10000)
-    }
-    
-    pub fn save(&self, data: &mut [u8]) -> Result<(), ProgramError> {
-        let bytes = to_vec(self).map_err(|_| ProgramError::InvalidAccountData)?;
-        if bytes.len() > data.len() {
-            return Err(ProgramError::AccountDataTooSmall);
-        }
-        data[..bytes.len()].copy_from_slice(&bytes);
-        Ok(())
     }
 }
 
@@ -134,7 +125,7 @@ fn process_initialize(
         bump,
     };
     
-    stake_data.save(&mut stake_account.data.borrow_mut())?;
+    stake_data.serialize(&mut &mut stake_account.data.borrow_mut()[..])?;
     msg!("Stake account initialized for {}", owner.key);
     Ok(())
 }
@@ -170,7 +161,7 @@ fn process_stake(
     stake_data.stake_timestamp = clock.unix_timestamp;
     stake_data.unlock_timestamp = clock.unix_timestamp + tier.lock_duration();
     
-    stake_data.save(&mut stake_account.data.borrow_mut())?;
+    stake_data.serialize(&mut &mut stake_account.data.borrow_mut()[..])?;
     msg!("Staked {} tokens, unlock at {}", amount, stake_data.unlock_timestamp);
     Ok(())
 }
@@ -205,7 +196,7 @@ fn process_unstake(
     
     let amount = stake_data.amount;
     stake_data.amount = 0;
-    stake_data.save(&mut stake_account.data.borrow_mut())?;
+    stake_data.serialize(&mut &mut stake_account.data.borrow_mut()[..])?;
     msg!("Unstaked {} tokens", amount);
     Ok(())
 }
@@ -242,7 +233,7 @@ fn process_claim_rewards(
     }
     
     stake_data.claimed_rewards = total_rewards;
-    stake_data.save(&mut stake_account.data.borrow_mut())?;
+    stake_data.serialize(&mut &mut stake_account.data.borrow_mut()[..])?;
     msg!("Claimed {} rewards", claimable);
     Ok(())
 }
