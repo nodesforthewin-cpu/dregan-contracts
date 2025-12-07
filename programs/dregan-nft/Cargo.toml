@@ -12,5 +12,5 @@ no-entrypoint = []
 
 [dependencies]
 solana-program = "=1.18.10"
-borsh = "0.10"
-spl-token = { version = "4.0", features = ["no-entrypoint"] }
+borsh = { version = "=0.10.3", features = ["derive"] }
+spl-token = { version = "=3.5.0", features = ["no-entrypoint"], default-features = false }
