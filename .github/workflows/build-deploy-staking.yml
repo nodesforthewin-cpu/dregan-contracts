@@ -16,18 +16,19 @@ jobs:
         with:
           node-version: '20'
 
-      - name: Install Rust 1.79
+      - name: Install Rust 1.75
         run: |
-          curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y --default-toolchain 1.79.0
+          curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y --default-toolchain 1.75.0
           echo "/home/runner/.cargo/bin" >> $GITHUB_PATH
 
-      - name: Install Solana CLI 2.1 (bundled rustc 1.79)
+      - name: Install Solana CLI 1.18.26 (designed for Anchor 0.30.x)
         run: |
-          curl -sSfL https://release.anza.xyz/v2.1.5/install | sh
+          curl -sSfL https://release.anza.xyz/v1.18.26/install | sh
           echo "/home/runner/.local/share/solana/install/active_release/bin" >> $GITHUB_PATH
 
       - name: Verify Tools
         run: |
+          echo "=== Checking versions ==="
           solana --version
           rustc --version
           cargo --version
@@ -39,53 +40,39 @@ jobs:
           chmod 600 ~/.config/solana/id.json
           solana config set --url https://api.devnet.solana.com
           solana config set --keypair ~/.config/solana/id.json
-          echo "Deployer:"
+          echo "Deployer public key:"
           solana-keygen pubkey ~/.config/solana/id.json
-          echo "Balance:"
+          echo "Checking balance:"
           solana balance
 
       - name: Build Staking Contract
         run: |
-          echo "=== Cleaning ==="
+          echo "=== Cleaning build artifacts ==="
           rm -rf target Cargo.lock ~/.cache/solana
           
           echo ""
-          echo "=== Generating fresh Cargo.lock ==="
-          cargo generate-lockfile
-          
-          echo ""
-          echo "=== Downgrading indexmap to rustc 1.79 compatible version ==="
-          cargo update -p indexmap --precise 2.0.2 || true
-          
-          echo ""
-          echo "=== Building with cargo build-sbf ==="
+          echo "=== Building dregan-staking with cargo build-sbf ==="
           cd programs/dregan-staking
           cargo build-sbf 2>&1
           
           echo ""
-          echo "=== Checking output ==="
+          echo "=== Checking .so file was generated ==="
           cd ../..
-          find . -name "*.so" -type f 2>/dev/null
-          ls -la target/deploy/ 2>/dev/null || echo "target/deploy not found"
+          find . -name "*.so" -type f 2>/dev/null | head -1
+          if [ ! -f "target/deploy/dregan_staking.so" ]; then
+            echo "ERROR: dregan_staking.so not found"
+            exit 1
+          fi
+          echo "✓ Build successful: target/deploy/dregan_staking.so"
 
       - name: Deploy Staking Contract
         run: |
-          echo "=== Finding .so file ==="
-          SO_FILE=$(find . -name "*.so" -type f 2>/dev/null | head -1)
-          
-          if [ -z "$SO_FILE" ]; then
-            echo "ERROR: No .so file found"
-            exit 1
-          fi
-          
-          echo "Deploying: $SO_FILE"
-          ls -lh "$SO_FILE"
-          
-          echo ""
-          echo "=== Deploying to Devnet ==="
-          solana program deploy "$SO_FILE" --url https://api.devnet.solana.com
+          echo "=== Deploying staking contract to Devnet ==="
+          solana program deploy target/deploy/dregan_staking.so \
+            --url https://api.devnet.solana.com \
+            --keypair ~/.config/solana/id.json
           
           echo ""
           echo "=========================================="
-          echo "STAKING CONTRACT DEPLOYED SUCCESSFULLY!"
+          echo "✓ STAKING CONTRACT DEPLOYED SUCCESSFULLY!"
           echo "=========================================="
