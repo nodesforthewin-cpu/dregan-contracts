@@ -1,13 +1,12 @@
 [package]
 name = "dregan-nft"
 version = "0.1.0"
-description = "DREGAN NFT Access Tiers - 3-tier NFT system for platform access"
+description = "DREGAN NFT Access Program for Solana"
 edition = "2021"
 
 [lib]
 crate-type = ["cdylib", "lib"]
 name = "dregan_nft"
-path = "src/lib.rs"
 
 [features]
 no-entrypoint = []
@@ -17,11 +16,8 @@ cpi = ["no-entrypoint"]
 default = []
 
 [dependencies]
-anchor-lang = { version = "0.28.0", features = ["init-if-needed"] }
-anchor-spl = { version = "0.28.0", features = ["token", "associated_token"] }
+anchor-lang = "0.27.0"
+anchor-spl = "0.27.0"
 
-[profile.release]
-opt-level = 3
-lto = true
-codegen-units = 1
-overflow-checks = true
+[dev-dependencies]
+anchor-client = "0.27.0"
