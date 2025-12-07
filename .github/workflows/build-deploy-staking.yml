@@ -16,7 +16,7 @@ jobs:
         with:
           node-version: '20'
 
-      - name: Install Rust 1.79 (last version before Cargo.lock v4)
+      - name: Install Rust 1.79
         run: |
           curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y --default-toolchain 1.79.0
           echo "/home/runner/.cargo/bin" >> $GITHUB_PATH
@@ -52,6 +52,13 @@ jobs:
           echo ""
           echo "=== Generating fresh Cargo.lock ==="
           cargo generate-lockfile
+          
+          echo ""
+          echo "=== Pinning compatible dependency versions for rustc 1.75 ==="
+          cargo update -p borsh --precise 1.5.1 || true
+          cargo update -p toml_datetime --precise 0.6.5 || true
+          cargo update -p winnow --precise 0.5.40 || true
+          cargo update -p proc-macro2 --precise 1.0.86 || true
           
           echo ""
           echo "=== Cargo.lock version ==="
