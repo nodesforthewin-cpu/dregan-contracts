@@ -42,26 +42,17 @@ jobs:
           echo "=== Balance ==="
           solana balance
           
-      - name: Build Staking Program
+      - name: Build All Programs
         run: |
-          cd programs/dregan-staking
-          anchor build
-          ls -la target/deploy/
-          
-      - name: Build NFT Program
-        run: |
-          cd programs/dregan-nft
           anchor build
           ls -la target/deploy/
           
       - name: Deploy Staking Program
         run: |
-          cd programs/dregan-staking
           echo "Deploying Staking Program..."
           solana program deploy target/deploy/dregan_staking.so
           
       - name: Deploy NFT Program
         run: |
-          cd programs/dregan-nft
           echo "Deploying NFT Program..."
           solana program deploy target/deploy/dregan_nft.so
