@@ -11,6 +11,6 @@ crate-type = ["cdylib", "lib"]
 no-entrypoint = []
 
 [dependencies]
-solana-program = "=1.17.28"
+solana-program = "=1.18.26"
 borsh = "0.10"
-spl-token = { version = "=3.5.0", features = ["no-entrypoint"] }
+spl-token = { version = "4.0", features = ["no-entrypoint"] }
