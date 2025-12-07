@@ -55,10 +55,12 @@ jobs:
           cargo generate-lockfile
           
           echo ""
-          echo "=== Downgrading dependencies to rustc 1.75 compatibility ==="
-          cargo update -p toml_edit --precise 0.22.21 || true
-          cargo update -p toml_datetime --precise 0.6.5 || true
-          cargo update -p winnow --precise 0.5.40 || true
+          echo "=== Aggressively downgrading dependencies to rustc 1.75 compatibility ==="
+          cargo update -p toml_datetime --precise 0.6.3 || true
+          cargo update -p toml_edit --precise 0.22.12 || true
+          cargo update -p winnow --precise 0.5.19 || true
+          cargo update -p indexmap --precise 1.9.3 || true
+          cargo update -p bytemuck_derive --precise 1.8.0 || true
           
           echo ""
           echo "=== Building dregan-staking with cargo build-sbf ==="
@@ -74,6 +76,7 @@ jobs:
             exit 1
           fi
           echo "✓ Build successful: target/deploy/dregan_staking.so"
+          ls -lh target/deploy/dregan_staking.so
 
       - name: Deploy Staking Contract
         run: |
