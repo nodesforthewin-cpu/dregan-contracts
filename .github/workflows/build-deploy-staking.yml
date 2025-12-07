@@ -47,23 +47,33 @@ jobs:
           echo "Balance:"
           solana balance
 
-      - name: Build Staking Contract
+      - name: Build and Deploy Staking Contract
         run: |
+          echo "=== Building DREGAN Staking ==="
           rm -rf target Cargo.lock
           anchor build -p dregan_staking
-
-      - name: Deploy Staking Contract
-        run: |
-          echo "=== Deploying DREGAN Staking to Solana Devnet ==="
+          
           echo ""
+          echo "=== Build artifacts ==="
+          find . -name "dregan_staking.so" 2>/dev/null || echo "SO file not found with find"
+          ls -la target/deploy/ 2>/dev/null || echo "target/deploy not found"
+          ls -la target/sbf-solana-solana/release/ 2>/dev/null || echo "sbf release not found"
           
-          # Show what we're deploying
-          ls -la target/deploy/ || true
+          echo ""
+          echo "=== Deploying to Solana Devnet ==="
           
-          # Deploy using solana CLI with verbose output
-          solana program deploy target/deploy/dregan_staking.so \
-            --url https://api.devnet.solana.com \
-            -v
+          # Find the .so file
+          SO_FILE=$(find . -name "dregan_staking.so" -type f 2>/dev/null | head -1)
+          echo "Found SO file: $SO_FILE"
+          
+          if [ -n "$SO_FILE" ]; then
+            solana program deploy "$SO_FILE" \
+              --url https://api.devnet.solana.com \
+              --with-compute-unit-price 1000
+          else
+            echo "ERROR: Could not find dregan_staking.so"
+            exit 1
+          fi
           
           echo ""
           echo "=========================================="
