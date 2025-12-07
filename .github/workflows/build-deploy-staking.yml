@@ -19,27 +19,31 @@ jobs:
       - name: Install Rust
         run: |
           curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y
-          echo "$HOME/.cargo/bin" >> $GITHUB_PATH
+          source $HOME/.cargo/env
+          rustup component add rustfmt
 
       - name: Install Solana CLI
         run: |
           sh -c "$(curl -sSfL https://release.solana.com/v1.18.22/install)"
           echo "$HOME/.local/share/solana/install/active_release/bin" >> $GITHUB_PATH
 
-      - name: Install Anchor CLI
+      - name: Install Anchor CLI via npm
         run: |
-          cargo install --git https://github.com/coral-xyz/anchor --tag v0.30.1 anchor-cli --locked
+          npm install -g @coral-xyz/anchor-cli@0.30.1
+
+      - name: Add Cargo to PATH
+        run: |
+          echo "$HOME/.cargo/bin" >> $GITHUB_PATH
 
       - name: Verify Installation
         run: |
-          source $HOME/.cargo/env
-          export PATH="$HOME/.local/share/solana/install/active_release/bin:$PATH"
           solana --version
           anchor --version
+          cargo --version
 
       - name: Setup Deployer Wallet
         run: |
-          export PATH="$HOME/.local/share/solana/install/active_release/bin:$PATH"
+          mkdir -p ~/.config/solana
           
           # Write keypair - the secret should be in JSON array format [1,2,3,...]
           echo '${{ secrets.DEPLOY_WALLET }}' > ~/.config/solana/id.json
@@ -57,21 +61,14 @@ jobs:
 
       - name: Build Staking Program
         run: |
-          source $HOME/.cargo/env
-          export PATH="$HOME/.local/share/solana/install/active_release/bin:$PATH"
           anchor build -p dregan_staking
 
       - name: Build NFT Program
         run: |
-          source $HOME/.cargo/env
-          export PATH="$HOME/.local/share/solana/install/active_release/bin:$PATH"
           anchor build -p dregan_nft
 
       - name: Deploy Staking Program
         run: |
-          source $HOME/.cargo/env
-          export PATH="$HOME/.local/share/solana/install/active_release/bin:$PATH"
-          
           echo "Deploying Staking Program..."
           solana program deploy target/deploy/dregan_staking.so --program-id target/deploy/dregan_staking-keypair.json
           
@@ -82,9 +79,6 @@ jobs:
 
       - name: Deploy NFT Program
         run: |
-          source $HOME/.cargo/env
-          export PATH="$HOME/.local/share/solana/install/active_release/bin:$PATH"
-          
           echo "Deploying NFT Program..."
           solana program deploy target/deploy/dregan_nft.so --program-id target/deploy/dregan_nft-keypair.json
           
