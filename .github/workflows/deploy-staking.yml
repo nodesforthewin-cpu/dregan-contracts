@@ -16,9 +16,9 @@ jobs:
         with:
           node-version: '20'
 
-      - name: Install Rust stable
+      - name: Install Rust 1.79
         run: |
-          curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y --default-toolchain stable
+          curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y --default-toolchain 1.79.0
           echo "/home/runner/.cargo/bin" >> $GITHUB_PATH
           source "$HOME/.cargo/env"
 
