@@ -1,0 +1,20 @@
+{
+  "name": "DREGAN ELITE Access",
+  "symbol": "DRGE",
+  "description": "DREGAN Elite Tier Access NFT - Unlock all premium features including 100 custom bots per month",
+  "seller_fee_basis_points": 0,
+  "external_url": "https://dregan.ai",
+  "image": "https://raw.githubusercontent.com/nodesforthewin-cpu/dregan-contracts/main/nft-assets/elite.png",
+  "attributes": [
+    {"trait_type": "Tier", "value": "ELITE"},
+    {"trait_type": "Max Bots", "value": "100"},
+    {"trait_type": "Priority Execution", "value": "Yes"},
+    {"trait_type": "Advanced Features", "value": "Yes"},
+    {"trait_type": "VIP Support", "value": "Yes"}
+  ],
+  "properties": {
+    "files": [{"uri": "https://raw.githubusercontent.com/nodesforthewin-cpu/dregan-contracts/main/nft-assets/elite.png", "type": "image/png"}],
+    "category": "image",
+    "creators": []
+  }
+}
