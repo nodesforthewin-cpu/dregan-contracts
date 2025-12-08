@@ -1,0 +1,19 @@
+{
+  "name": "DREGAN BASIC Access",
+  "symbol": "DRGB",
+  "description": "DREGAN Basic Tier Access NFT - Unlock entry-level platform features including 5 custom bots per month",
+  "seller_fee_basis_points": 0,
+  "external_url": "https://dregan.ai",
+  "image": "https://raw.githubusercontent.com/nodesforthewin-cpu/dregan-contracts/main/nft-assets/basic.png",
+  "attributes": [
+    {"trait_type": "Tier", "value": "BASIC"},
+    {"trait_type": "Max Bots", "value": "5"},
+    {"trait_type": "Priority Execution", "value": "No"},
+    {"trait_type": "Advanced Features", "value": "No"}
+  ],
+  "properties": {
+    "files": [{"uri": "https://raw.githubusercontent.com/nodesforthewin-cpu/dregan-contracts/main/nft-assets/basic.png", "type": "image/png"}],
+    "category": "image",
+    "creators": []
+  }
+}
