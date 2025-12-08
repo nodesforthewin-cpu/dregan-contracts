@@ -1,15 +1,16 @@
 [package]
 name = "dregan-staking"
-version = "0.1.0"
-description = "DREGAN Staking Program for Solana"
+version = "1.1.0"
 edition = "2021"
+description = "DREGAN Staking Pool - Fixed with proper SPL Token transfers"
 
 [lib]
 crate-type = ["cdylib", "lib"]
 
+[dependencies]
+solana-program = "1.17.28"
+borsh = "0.10.3"
+spl-token = { version = "4.0.0", features = ["no-entrypoint"] }
+
 [features]
 no-entrypoint = []
-
-[dependencies]
-solana-program = "=1.17.28"
-borsh = "=0.10.3"
