@@ -1,0 +1,19 @@
+{
+  "name": "DREGAN PRO Access",
+  "symbol": "DRGP",
+  "description": "DREGAN Pro Tier Access NFT - Unlock advanced trading features including 25 custom bots per month",
+  "seller_fee_basis_points": 0,
+  "external_url": "https://dregan.ai",
+  "image": "https://raw.githubusercontent.com/nodesforthewin-cpu/dregan-contracts/main/nft-assets/pro.png",
+  "attributes": [
+    {"trait_type": "Tier", "value": "PRO"},
+    {"trait_type": "Max Bots", "value": "25"},
+    {"trait_type": "Priority Execution", "value": "Yes"},
+    {"trait_type": "Advanced Features", "value": "Yes"}
+  ],
+  "properties": {
+    "files": [{"uri": "https://raw.githubusercontent.com/nodesforthewin-cpu/dregan-contracts/main/nft-assets/pro.png", "type": "image/png"}],
+    "category": "image",
+    "creators": []
+  }
+}
